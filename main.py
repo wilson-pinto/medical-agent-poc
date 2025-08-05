@@ -92,5 +92,5 @@ Example: MT001 - This matches spine therapy.
 def formatter_agent(session_id: str, result: str):
     return {
         "session_id": session_id,
-        "message": f"✅ Best matching code: {result}"
+        "message": f"Best matching code: {result}"
     }
