@@ -1,6 +1,11 @@
 fastapi
 uvicorn
 pydantic
-sentence-transformers
 faiss-cpu
 openai
+fastapi
+sentence-transformers
+python-dotenv
+google-generativeai
+openpyxl
+pandas
