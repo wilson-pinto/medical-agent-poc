@@ -52,17 +52,17 @@ def main():
         print(f"Missing XML file at {XML_FILE}")
         return
 
-    print("🔄 Loading codes from XML...")
+    print("Loading codes from XML...")
     codes = load_codes_from_xml(XML_FILE)
-    print(f"✅ Loaded {len(codes)} codes")
+    print(f"Loaded {len(codes)} codes")
 
-    print("💾 Saving to SQLite...")
+    print("Saving to SQLite...")
     save_to_sqlite(codes)
-    print(f"✅ Saved to {DB_FILE}")
+    print(f"Saved to {DB_FILE}")
 
-    print("🧠 Generating embeddings + saving FAISS index...")
+    print("Generating embeddings + saving FAISS index...")
     build_faiss_index(codes, EMBED_MODEL)
-    print("✅ All done!")
+    print("All done!")
 
 if __name__ == "__main__":
     main()
