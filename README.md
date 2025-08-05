@@ -2,138 +2,200 @@
 
 A lightweight offline AI agent designed to help healthcare practitioners:
 
-1. ✅ Suggest accurate **service codes** based on user input or SOAP notes
-2. 🚨 Validate **claims** before submission to reduce rejection from HELFO
+✅ Suggest accurate service codes based on user input or SOAP notes  
+🚨 Validate claims before submission to reduce rejection from HELFO
 
 ---
 
 ## 📌 Why This Is Needed
 
 ### ✅ AI for Suggesting Service Codes
-- **Problem**: Practitioners struggle to pick correct codes from large, complex lists.
-- **Impact**: Incorrect codes cause claim rejections and delays.
-- **AI Advantage**: Instantly suggests relevant service codes using your input or notes.
+- **Problem:** Practitioners struggle to pick correct codes from large, complex lists.
+- **Impact:** Incorrect codes cause claim rejections and delays.
+- **AI Advantage:** Instantly suggests relevant service codes using your input or notes.
 
 ### 🚨 AI for Validating Claims
-- **Problem**: Claims often get rejected due to wrong code combos or missing details.
-- **Impact**: Wasted time on rework and resubmissions.
-- **AI Advantage**: Pre-checks claims and flags potential issues before submission.
+- **Problem:** Claims often get rejected due to wrong code combos or missing details.
+- **Impact:** Wasted time on rework and resubmissions.
+- **AI Advantage:** Pre-checks claims and flags potential issues before submission.
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Component          | Description                              |
-|--------------------|------------------------------------------|
-| `FastAPI`          | API framework for agents                 |
-| `FAISS`            | Semantic search index for service codes |
-| `SQLite`           | Local DB for service code metadata      |
-| `SentenceTransformers` | Embedding model for semantic search |
-| `OpenAI GPT-4o`    | For intelligent reranking               |
+| Component              | Description                                  |
+|------------------------|----------------------------------------------|
+| FastAPI                | API framework for agents                     |
+| FAISS                  | Semantic search index for service codes      |
+| SQLite                 | Local DB for service and diagnosis codes     |
+| SentenceTransformers   | Embedding model for semantic search          |
+| OpenAI GPT-4o          | For intelligent reranking                    |
+| Gemini Pro/Flash       | Alternative reranking via Google AI          |
 
 ---
 
 ## 🧰 Prerequisites
 
-1. **Install [Anaconda (Miniconda)](https://docs.conda.io/en/latest/miniconda.html)**
-2. **Install Python 3.10+**
-    - Already bundled with Miniconda
-3. **Create and activate virtual env:**
+1. Install [Anaconda (Miniconda)](https://docs.conda.io/en/latest/miniconda.html)
+2. Python 3.10+ (bundled with Miniconda)
 
 ```bash
 conda create -n medical-agent python=3.10 -y
 conda activate medical-agent
-📦 Setup Instructions
-Clone the Repo:
+```
 
-bash
+---
 
+## 📦 Setup Instructions
+
+### 1. Clone the Repo
+```bash
 git clone <your-repo-url>
 cd medical-agent-poc
-Install Dependencies:
+```
 
-bash
-
+### 2. Install Dependencies
+```bash
 pip install -r requirements.txt
-If you don’t have requirements.txt, here's the list to use:
+```
 
-bash
+If you don’t have `requirements.txt`, run:
+```bash
+pip install fastapi uvicorn pydantic sentence-transformers openai faiss-cpu python-dotenv google-generativeai openpyxl pandas
+```
 
-pip install fastapi uvicorn sentence-transformers openai faiss-cpu sqlite-utils python-dotenv
-Get an OpenAI API Key:
+### 3. Set Up Environment Variables
 
-Go to https://platform.openai.com/account/api-keys
+Create a `.env` file in the project root:
+```
+OPENAI_API_KEY=sk-...your-openai-key
+GEMINI_API_KEY=your-gemini-key
+GOOGLE_API_KEY=your-gemini-key
+USE_GEMINI=true
+```
 
-Copy your key
+---
 
-Set Environment Variable (Windows):
+## 🔧 Build Search Indexes (One-time setup)
+```bash
+python scripts/build_code_index.py
+python scripts/build_diagnosis_index.py
+```
+> Ensure `data/taksttabell.xml` and `data/icd10_norway.xlsx` are present.
 
-bash
+This creates:
+- `data/codes.db`
+- `data/diagnosis_codes.db`
+- `index/codes_index.faiss`
+- `index/diagnosis_index.faiss`
 
-set OPENAI_API_KEY=sk-...your-key
-You can also save it in a .env file:
+---
 
-bash
+## 🚀 Running the App
 
-OPENAI_API_KEY=sk-...your-key
-🗂️ Project Structure
-graphql
+```bash
+uvicorn app.main:app --reload
+```
 
-medical-agent-poc/
-├── data/
-│   └── codes.db             # SQLite DB with service codes
-├── index/
-│   └── codes_index.faiss    # FAISS index for semantic search
-├── taksttabell.xml          # Raw XML service codes
-├── main.py                  # FastAPI app
-├── README.md                # You are here
-🚀 Running the App
-Activate your conda env:
+Visit: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) for Swagger UI.
 
-bash
+---
 
-conda activate medical-agent
-Start the server:
+## 📌 Endpoints
 
-bash
-
-uvicorn main:app --reload
-Open browser or use Postman to test:
-
-📌 Endpoints
-🔍 /agent/search/invoke — Suggest codes (semantic search)
-json
-
-POST http://127.0.0.1:8000/agent/search/invoke
+### 🔍 `/agent/search/invoke`
+Suggest service codes (semantic search)
+```json
+POST /agent/search/invoke
 {
   "session_id": "test-001",
-  "query": "eye surgery consultation",
+  "query": "øyekonsultasjon etter kirurgi",
   "top_k": 5
 }
-🧠 /agent/rerank/invoke — Re-rank using GPT-4o
-json
+```
 
-POST http://127.0.0.1:8000/agent/rerank/invoke
+### 🧠 `/agent/rerank/invoke`
+Re-rank candidates using Gemini or GPT-4o
+```json
+POST /agent/rerank/invoke
 {
   "session_id": "test-001",
-  "query": "eye surgery consultation",
-  "candidates": ["K01a: Cataract surgery", "K01d: Eyelid surgery", "H1: Blåresept application"]
+  "query": "øyekonsultasjon etter kirurgi",
+  "candidates": [
+    "K01a: Kataraktoperasjon",
+    "K01d: Operasjon av øyelokk",
+    "H1: Blåreseptsøknad"
+  ]
 }
-✅ /agent/formatter/invoke — Final result formatter
-http
+```
 
-GET http://127.0.0.1:8000/agent/formatter/invoke?session_id=test-001&result=K01a
-🧪 Sample Data
-taksttabell.xml – Source XML file for service codes.
+### 🧠 `/ai/extract-diagnoses`
+Extract ICD-10 codes from SOAP text
+```json
+POST /ai/extract-diagnoses
+{
+  "soap": "Pasienten har hatt feber og sår hals i 2 dager."
+}
+```
 
-You can modify it and re-run the index generation script (to be added).
+### ✅ `/ai/check-service-diagnosis`
+Validate that diagnosis & note justify service codes
+```json
+POST /ai/check-service-diagnosis
+{
+  "soap": "Sår hals, CRP forhøyet. Fikk rekvirert antibiotika.",
+  "diagnoses": ["J02"],
+  "service_codes": ["212b"]
+}
+```
 
-🔮 Future Features
-Auto-validate claim forms using XML + journal notes
+### ✅ `/ai/check-note-requirements`
+Check if SOAP supports required documentation
+```json
+POST /ai/check-note-requirements
+{
+  "soap": "Sår hals, svelgvansker. Utført halsundersøkelse.",
+  "service_codes": ["212b"]
+}
+```
 
-Explain reasons for likely rejection
+### ⚠️ `/semantic-combo-warning`
+Warn about rare or suspicious code combos
+```json
+POST /semantic-combo-warning
+{
+  "soap": "Rutinekontroll og samtidig akutt infeksjon."
+  "service_codes": ["1ae", "1ad"]
+}
+```
 
-Auto-fill missing fields using context
+### 🔍 `/diagnosis/search/invoke`
+Search ICD-10 diagnosis semantically
+```json
+POST /diagnosis/search/invoke
+{
+  "query": "pasient har smerter i korsryggen",
+  "top_k": 5
+}
+```
 
-👨‍💻 Maintainer
-Team AI Alchemists
+---
+
+## 🧪 Sample Data
+
+- `taksttabell.xml` – Source XML for service codes
+- `icd10_norway.xlsx` – Diagnosis reference list
+
+Update these and re-run build scripts as needed.
+
+---
+
+## 🔮 Future Features
+- Auto-validate full XML claim forms
+- Explain likely causes of HELFO rejections
+- Fill missing fields from SOAP note context
+
+---
+
+## 👨‍💻 Maintainer
+**Team AI Alchemists** – Built for HELFO claim quality improvements using AI
