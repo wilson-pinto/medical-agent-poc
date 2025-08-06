@@ -1,11 +1,29 @@
+# FastAPI + basics
 fastapi
 uvicorn
 pydantic
-faiss-cpu
-openai
-fastapi
-sentence-transformers
 python-dotenv
+
+# AI
+openai
 google-generativeai
-openpyxl
+sentence-transformers==2.2.2
+huggingface_hub==0.19.4
+
+# Data handling
 pandas
+openpyxl
+
+# FAISS for semantic search (CPU only)
+faiss-cpu
+
+# Pinned Torch CPU version (no GPU, no crash)
+torch==2.3.1+cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+
+# NumPy is <2 to avoid crash
+numpy<2.0
+
+# Extra index to fetch CPU-only torch
+--extra-index-url https://download.pytorch.org/whl/cpu
