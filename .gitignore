@@ -151,7 +151,4 @@ cython_debug/
 # JetBrains
 .idea/
 
-# Custom
-index/
-data/codes.db
-taksttabell.xml
+
