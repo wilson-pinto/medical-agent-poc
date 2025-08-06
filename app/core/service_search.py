@@ -1,9 +1,10 @@
 import faiss
 import sqlite3
 import numpy as np
-from sentence_transformers import SentenceTransformer
+from app.core.sentence_model_registry import get_sentence_model
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+
+model = get_sentence_model("all-MiniLM-L6-v2")
 index = faiss.read_index("index/codes_index.faiss")
 conn = sqlite3.connect("data/codes.db", check_same_thread=False)
 cursor = conn.cursor()

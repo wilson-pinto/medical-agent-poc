@@ -1,16 +1,16 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from sentence_transformers import SentenceTransformer
 import faiss
 import numpy as np
 import sqlite3
 import os
 from openai import OpenAI
+from app.core.sentence_model_registry import get_sentence_model
 
 app = FastAPI()
 
 # -------------- Setup --------------------
-embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+embedding_model = get_sentence_model("all-MiniLM-L6-v2")
 
 # Load FAISS index
 faiss_index = faiss.read_index("index/codes_index.faiss")
