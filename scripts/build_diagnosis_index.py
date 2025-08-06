@@ -3,7 +3,7 @@ import pandas as pd
 import sqlite3
 import faiss
 import numpy as np
-from sentence_transformers import SentenceTransformer
+from app.core.sentence_model_registry import get_sentence_model
 
 # --------- Config ---------
 EXCEL_FILE = "data/icd10_norway.xlsx"
@@ -32,7 +32,7 @@ def save_to_sqlite(codes):
     conn.close()
 
 def build_faiss_index(codes):
-    model = SentenceTransformer(EMBEDDING_MODEL)
+    model = get_sentence_model(EMBEDDING_MODEL)
     descriptions = [desc for _, desc in codes]
     embeddings = model.encode(descriptions, convert_to_numpy=True)
 

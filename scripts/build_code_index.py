@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET
 import sqlite3
 import faiss
 import numpy as np
-from sentence_transformers import SentenceTransformer
+from app.core.sentence_model_registry import get_sentence_model
 
 # --------- Config ---------
 XML_FILE = "data/taksttabell.xml"
@@ -36,7 +36,7 @@ def save_to_sqlite(codes):
     conn.close()
 
 def build_faiss_index(codes, model_name):
-    model = SentenceTransformer(model_name)
+    model = get_sentence_model(model_name)
     descriptions = [desc for _, desc in codes]
     embeddings = model.encode(descriptions, convert_to_numpy=True)
 

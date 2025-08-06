@@ -1,13 +1,13 @@
 import faiss
 import sqlite3
 import numpy as np
-from sentence_transformers import SentenceTransformer
+from app.core.sentence_model_registry import get_sentence_model
 
 DB_PATH = "data/diagnosis_codes.db"
 INDEX_PATH = "index/diagnosis_index.faiss"
 EMBED_MODEL = "NbAiLab/nb-sbert-base"
 
-model = SentenceTransformer(EMBED_MODEL)
+model = get_sentence_model(EMBED_MODEL)
 index = faiss.read_index(INDEX_PATH)
 
 conn = sqlite3.connect(DB_PATH, check_same_thread=False)
