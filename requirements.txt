@@ -18,12 +18,15 @@ openpyxl
 faiss-cpu
 
 # Pinned Torch CPU version (no GPU, no crash)
-torch==2.3.1+cpu
---extra-index-url https://download.pytorch.org/whl/cpu
-
+torch==2.3.1+cpu --extra-index-url https://download.pytorch.org/whl/cpu
 
 # NumPy is <2 to avoid crash
 numpy<2.0
 
-# Extra index to fetch CPU-only torch
---extra-index-url https://download.pytorch.org/whl/cpu
+# PII detection
+presidio-analyzer
+presidio-anonymizer
+
+# SpaCy and Norwegian model
+spacy
+https://github.com/explosion/spacy-models/releases/download/nb_core_news_sm-3.7.0/nb_core_news_sm-3.7.0-py3-none-any.whl

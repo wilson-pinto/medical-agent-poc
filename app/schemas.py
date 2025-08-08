@@ -30,3 +30,6 @@ class ComboInput(BaseModel):
 class DiagnosisSearchRequest(BaseModel):
     query: str
     top_k: int = 5
+
+class PiiTextInput(BaseModel):
+    text: str

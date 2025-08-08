@@ -3,6 +3,7 @@ from app import config
 from app.schemas import *
 from app.core import rerank_gemini, rerank_openai, validation_gemini, diagnosis_search, service_search
 from app.utils.json_utils import safe_extract_json
+from app.core.pii_analyzer import analyze_text, anonymize_text
 
 router = APIRouter()
 
@@ -40,3 +41,14 @@ def semantic_combo_warning(payload: ComboInput):
 @router.post("/diagnosis/search/invoke")
 def diagnosis_search_api(payload: DiagnosisSearchRequest):
     return {"results": diagnosis_search.search_diagnosis(payload.query, payload.top_k)}
+
+@router.post("/pii/analyze")
+def analyze_pii(input: PiiTextInput):
+    entities = analyze_text(input.text)
+    return {"entities": entities}
+
+@router.post("/pii/anonymize")
+def anonymize_pii(input: PiiTextInput):
+    entities = analyze_text(input.text)
+    redacted = anonymize_text(input.text, entities)
+    return {"anonymized_text": redacted}
