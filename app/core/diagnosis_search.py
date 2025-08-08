@@ -23,3 +23,11 @@ def search_diagnosis(query: str, top_k: int = 5):
         code, description = all_codes[idx]
         matches.append(f"{code}: {description}")
     return matches
+
+def get_diagnosis_descriptions(codes: list[str]) -> dict:
+    code_set = set(codes)
+    result = {}
+    for code, description in all_codes:
+        if code in code_set:
+            result[code] = description
+    return result
