@@ -19,3 +19,11 @@ def search_codes(query: str, top_k: int = 5):
         code_id, desc = all_codes[idx]
         matches.append(f"{code_id}: {desc}")
     return matches
+
+def get_service_code_descriptions(codes: list[str]) -> dict:
+    code_set = set(codes)
+    result = {}
+    for code_id, desc in all_codes:
+        if code_id in code_set:
+            result[code_id] = desc
+    return result
