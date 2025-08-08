@@ -11,8 +11,19 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# ---- Copy the rest of your app ----
+# ---- Set model cache envs ----
+ENV TRANSFORMERS_CACHE=/root/.cache/huggingface/transformers
+ENV SENTENCE_TRANSFORMERS_HOME=/root/.cache/sentence_transformers
+
+# ---- Preload sentence-transformer models into image ----
+RUN python -c "from sentence_transformers import SentenceTransformer; \
+    SentenceTransformer('NbAiLab/nb-sbert-base'); \
+    SentenceTransformer('all-MiniLM-L6-v2')"
+
 COPY . .
+
+# ---- Expose port ----
+EXPOSE 8000
 
 # ---- Default command ----
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
