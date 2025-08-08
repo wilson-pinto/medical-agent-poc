@@ -10,7 +10,8 @@ from app.core.sentence_model_registry import get_sentence_model
 app = FastAPI()
 
 # -------------- Setup --------------------
-embedding_model = get_sentence_model("all-MiniLM-L6-v2")
+EMBED_MODEL = "NbAiLab/nb-sbert-base"
+embedding_model = get_sentence_model(EMBED_MODEL)
 
 # Load FAISS index
 faiss_index = faiss.read_index("index/codes_index.faiss")

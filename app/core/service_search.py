@@ -2,9 +2,8 @@ import faiss
 import sqlite3
 import numpy as np
 from app.core.sentence_model_registry import get_sentence_model
-
-
-model = get_sentence_model("all-MiniLM-L6-v2")
+EMBED_MODEL = "NbAiLab/nb-sbert-base"
+model = get_sentence_model(EMBED_MODEL)
 index = faiss.read_index("index/codes_index.faiss")
 conn = sqlite3.connect("data/codes.db", check_same_thread=False)
 cursor = conn.cursor()

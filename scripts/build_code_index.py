@@ -9,7 +9,7 @@ from app.core.sentence_model_registry import get_sentence_model
 XML_FILE = "data/taksttabell.xml"
 DB_FILE = "data/codes.db"
 FAISS_INDEX_FILE = "index/codes_index.faiss"
-EMBED_MODEL = "all-MiniLM-L6-v2"
+EMBED_MODEL = "NbAiLab/nb-sbert-base"
 NAMESPACE = {"ns": "http://helfo.no/skjema/taksttabell"}
 # --------------------------
 
