@@ -7,7 +7,9 @@ from app.core.pii_analyzer import analyze_text, anonymize_text
 
 router = APIRouter()
 
-@router.post("/agent/search/localmodel/invoke")
+@router.post("/ai/suggest-service-codes/local-model",
+summary="Suggest HELFO service codes from SOAP notes using local model"
+)
 def search_agent(payload: QueryRequest):
     matches = service_search.search_codes(payload.query, payload.top_k)
     return {"session_id": payload.session_id, "candidates": matches}
