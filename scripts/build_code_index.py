@@ -1,4 +1,5 @@
 import os
+import argparse
 import xml.etree.ElementTree as ET
 import sqlite3
 import faiss
@@ -47,7 +48,36 @@ def build_faiss_index(codes, model_name):
     faiss.write_index(index, FAISS_INDEX_FILE)
     print(f"FAISS index with {len(codes)} codes saved to {FAISS_INDEX_FILE}")
 
+def verify_index():
+    if not os.path.exists(DB_FILE) or not os.path.exists(FAISS_INDEX_FILE):
+        print("[ERROR] Missing DB or FAISS index file.")
+        return False
+
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM codes")
+    db_count = cur.fetchone()[0]
+    conn.close()
+
+    index = faiss.read_index(FAISS_INDEX_FILE)
+    faiss_count = index.ntotal
+
+    if db_count != faiss_count:
+        print(f"[FAIL] Mismatch: DB has {db_count} codes, FAISS has {faiss_count} embeddings.")
+        return False
+
+    print(f"[PASS] DB and FAISS index match: {db_count} codes.")
+    return True
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--verify", action="store_true", help="Verify DB ↔ FAISS consistency")
+    args = parser.parse_args()
+
+    if args.verify:
+        verify_index()
+        return
+
     if not os.path.exists(XML_FILE):
         print(f"Missing XML file at {XML_FILE}")
         return

@@ -1,9 +1,12 @@
+#api.py
 from fastapi import APIRouter
 from app import config
 from app.schemas import *
 from app.core import rerank_gemini, rerank_openai, validation_gemini, diagnosis_search, service_search
 from app.utils.json_utils import safe_extract_json
 from app.core.pii_analyzer import analyze_text, anonymize_text
+from fastapi import Query
+
 
 router = APIRouter()
 
@@ -26,9 +29,32 @@ def rerank_agent(payload: RerankRequest):
 def check_note_requirements_api(payload: NoteCheckRequest):
     return {"result": validation_gemini.check_note_requirements(payload.soap, payload.service_codes)}
 
+
 @router.post("/ai/extract-diagnoses")
-def extract_diagnoses(payload: SoapInput):
-    return {"diagnoses": validation_gemini.extract_diagnoses_from_soap(payload.soap)}
+def extract_diagnoses(
+    payload: SoapInput,
+    top_k: int = Query(5, ge=1, le=10, description="Number of top matches per concept before rerank"),
+    min_similarity: float = Query(0.6, ge=0.0, le=1.0, description="Minimum similarity threshold"),
+    final_top_n: int = Query(1, ge=1, le=10, description="Number of top matches to keep per concept after rerank")
+):
+    """
+    Extract probable diagnoses from SOAP note.
+
+    This endpoint:
+    - Removes PII from SOAP.
+    - Uses Gemini LLM to group clinical concepts from the SOAP.
+    - Searches for matching diagnoses for each concept.
+    - Uses Gemini LLM to rerank and filter diagnoses.
+    """
+    result = validation_gemini.extract_diagnoses_from_soap(
+        payload.soap,
+        top_k=top_k,
+        min_similarity=min_similarity,
+        final_top_n=final_top_n
+    )
+    return result
+
+
 
 @router.post("/ai/check-service-diagnosis")
 def check_service_diagnosis(payload: ServiceDiagnosisInput):
