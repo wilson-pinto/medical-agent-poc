@@ -18,6 +18,8 @@ openpyxl
 # FAISS for semantic search (CPU only)
 faiss-cpu
 
+beautifulsoup4
+
 # Pinned Torch CPU version (no GPU, no crash)
 torch==2.3.1+cpu --extra-index-url https://download.pytorch.org/whl/cpu
 
