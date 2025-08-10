@@ -3,6 +3,7 @@ fastapi
 uvicorn
 pydantic
 python-dotenv
+langdetect
 
 # AI
 openai
