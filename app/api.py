@@ -7,11 +7,13 @@ from app.utils.json_utils import safe_extract_json
 from app.core.pii_analyzer import analyze_text, anonymize_text
 from fastapi import Query
 
+from app.schemas_new.validate_note_requirements import CheckNoteRequest, CheckNoteResponse
+from app.core.validate_note_requirements.engine import validate_soap_against_codes
 
 router = APIRouter()
 
 @router.post("/ai/suggest-service-codes/local-model",
-summary="Suggest HELFO service codes from SOAP notes using local model"
+summary="Suggest HELFO service codes from SOAP notes using local embedding model"
 )
 def search_agent(payload: QueryRequest):
     matches = service_search.search_codes(payload.query, payload.top_k)
@@ -25,9 +27,9 @@ def rerank_agent(payload: RerankRequest):
         decision = rerank_openai.rerank_with_openai(payload.query, payload.candidates)
     return {"session_id": payload.session_id, "decision": decision}
 
-@router.post("/ai/check-note-requirements")
-def check_note_requirements_api(payload: NoteCheckRequest):
-    return {"result": validation_gemini.check_note_requirements(payload.soap, payload.service_codes)}
+# @router.post("/ai/check-note-requirements")
+# def check_note_requirements_api(payload: NoteCheckRequest):
+#     return {"result": validation_gemini.check_note_requirements(payload.soap, payload.service_codes)}
 
 
 @router.post("/ai/extract-diagnoses")
@@ -66,7 +68,7 @@ def semantic_combo_warning(payload: ComboInput):
     warnings = validation_gemini.check_semantic_combo_warning(payload.service_codes, payload.soap)
     return {"warnings": warnings}
 
-@router.post("/diagnosis/search/invoke")
+@router.post("/diagnosis/search/invoke/local-embedding-model")
 def diagnosis_search_api(payload: DiagnosisSearchRequest):
     return {"results": diagnosis_search.search_diagnosis(payload.query, payload.top_k)}
 
@@ -80,3 +82,10 @@ def anonymize_pii(input: PiiTextInput):
     entities = analyze_text(input.text)
     redacted = anonymize_text(input.text, entities)
     return {"anonymized_text": redacted}
+
+@router.post("/ai/v2/check-note-requirements", response_model=CheckNoteResponse)
+def check_note(req: CheckNoteRequest):
+    result = validate_soap_against_codes(req.soap, req.service_codes)
+    # result already matches {"overall":..., "results":[PerCodeResult,...]}
+    # Ensure results serialization (Pydantic will handle PerCodeResult)
+    return result

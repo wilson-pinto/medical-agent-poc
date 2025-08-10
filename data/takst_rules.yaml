@@ -1,0 +1,31 @@
+"1ad":
+  name: "Enkel pasientkontakt ved personlig frammøte"
+  required_terms:
+    - "råd"
+    - "veiledning"
+    - "personlig frammøte"
+  warn_terms:
+    - "råd"
+    - "veiledning"
+  suggestions:
+    - "Document that advice/ guidance was given and that patient was seen in person."
+  version: "HELFO-2025-01"
+  requirement: "Taksten krever personlig møte og at råd/veiledning ble gitt. Gjelder også ved resept eller henvisning."
+  severity:
+    fail: "Missing any of the required_terms."
+    warn: "Advice/guidance mentioned but missing confirmation of in-person meeting."
+
+"1bd":
+  name: "Enkel pasientkontakt skriftlig/telefon"
+  required_terms:
+    - "råd"
+    - "telefon"
+  warn_terms:
+    - "råd"
+  suggestions:
+    - "Note phone or electronic contact and the advice given."
+  version: "HELFO-2025-01"
+  requirement: "Gjelder skriftlig eller telefonisk kontakt der råd/veiledning gis."
+  severity:
+    fail: "Missing both advice and contact type."
+    warn: "Advice documented but missing contact type."
