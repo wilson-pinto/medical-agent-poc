@@ -1,0 +1,186 @@
+H1:
+  version: HELFO-2025-01
+  name: H1 - Ukjent oppgave
+  required_terms: []
+  warn_terms: []
+  suggestions: []
+  requirement: Ingen kravspesifikasjon tilgjengelig.
+  severity:
+    fail: Krav mangler for H1.
+    warn: Anbefaling mangler for H1.
+1ad:
+  name: Ukjent HELFO-oppgave (1ad)
+  required_terms: []
+  warn_terms: []
+  suggestions: []
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet.
+  severity:
+    fail: Krav mangler i dokumentasjonen for HELFO-oppgave 1ad.
+    warn: Anbefalt informasjon mangler i dokumentasjonen for HELFO-oppgave 1ad.
+1bd:
+  version: HELFO-2025-01
+  name: Ukjent HELFO oppgave (1bd)
+  required_terms: []
+  warn_terms: []
+  suggestions: []
+  requirement: Ukjent krav. Forskriftsteksten mangler.
+  severity:
+    fail: Krav mangler i dokumentasjonen.  Nødvendige termer ikke funnet for HELFO
+      oppgave 1bd.
+    warn: Dokumentasjonen mangler viktige termer. Vennligst vurder å legge til manglende
+      termer for HELFO oppgave 1bd.
+1bk:
+  name: Ukjent HELFO oppgave (1bk)
+  required_terms: []
+  warn_terms: []
+  suggestions: []
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet.
+  severity:
+    fail: Mangler obligatoriske termer for HELFO oppgave 1bk.
+    warn: Mangler anbefalte termer for HELFO oppgave 1bk.
+1i:
+  name: Ukjent HELFO oppgave 1i
+  required_terms: []
+  warn_terms: []
+  suggestions: []
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet.
+  severity:
+    fail: Krav mangler for HELFO oppgave 1i. Vennligst oppgi nødvendige termer.
+    warn: Anbefalte termer mangler for HELFO oppgave 1i. Vennligst vurder å inkludere
+      disse.
+1f:
+  name: Ukjent HELFO oppgave 1f
+  required_terms: []
+  warn_terms: []
+  suggestions: []
+  version: HELFO-2025-01
+  requirement: Ingen krav definert i forkriftsteksten.
+  severity:
+    fail: Krav mangler for HELFO oppgave 1f.  Nødvendige termer mangler i dokumentasjonen.
+    warn: 'Advarsel: Anbefalte termer mangler i dokumentasjonen for HELFO oppgave
+      1f.'
+1g:
+  name: Ukjent HELFO-kode 1g
+  required_terms: []
+  warn_terms: []
+  suggestions: []
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet for HELFO-kode 1g.
+  severity:
+    fail: Mangler nødvendige termer for HELFO-kode 1g.
+    warn: Mangler anbefalte termer for HELFO-kode 1g.
+2ad:
+  name: Ukjent HELFO-kode 2ad
+  required_terms: []
+  warn_terms: []
+  suggestions: []
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet.
+  severity:
+    fail: Mangler nødvendige termer for HELFO-kode 2ad.
+    warn: Mangler anbefalte termer for HELFO-kode 2ad.
+2cd:
+  name: Ukjent HELFO-kode 2cd
+  required_terms: []
+  warn_terms: []
+  suggestions: []
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet.
+  severity:
+    fail: Krav mangler for HELFO-kode 2cd.
+    warn: Anbefaling mangler for HELFO-kode 2cd.
+2fk:
+  name: Ukjent HELFO oppgave (2fk)
+  required_terms: []
+  warn_terms: []
+  suggestions: []
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet.
+  severity:
+    fail: Krav mangler for HELFO oppgave 2fk.
+    warn: Anbefalt informasjon mangler for HELFO oppgave 2fk.
+2ld:
+  name: Listeinnbyggertakst
+  required_terms:
+  - fastlege
+  - introduksjonslege
+  - LIS1
+  - stedfortreder
+  - listeinnbyggere
+  warn_terms:
+  - egen
+  suggestions:
+  - Sørg for å presisere hvem som kan benytte taksten.
+  - Spesifiser eventuelle unntak.
+  version: HELFO-2025-01
+  requirement: En fastlege, en introduksjonslege, LIS1 og fastlegens stedfortreder
+    kan benytte taksten for egne listeinnbyggere.
+  severity:
+    fail: Dokumentasjonen mangler nødvendige termer for å beskrive hvem som kan benytte
+      taksten (fastlege, introduksjonslege, LIS1, stedfortreder, listeinnbyggere).
+    warn: Dokumentasjonen bør spesifisere at taksten kun gjelder for egne listeinnbyggere.
+4a1:
+  name: HELFO kode 4a1
+  required_terms: []
+  warn_terms: []
+  suggestions: []
+  version: HELFO-2025-01
+  requirement: ''
+  severity:
+    fail: Manglende obligatoriske termer for HELFO kode 4a1.
+    warn: Manglende anbefalte termer for HELFO kode 4a1.
+4b1:
+  name: Ukjent HELFO-kode 4b1
+  required_terms: []
+  warn_terms: []
+  suggestions: []
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet.
+  severity:
+    fail: Krav mangler for HELFO-kode 4b1.
+    warn: Anbefalt informasjon mangler for HELFO-kode 4b1.
+6a:
+  version: HELFO-2025-01
+  name: Ukjent
+  required_terms: []
+  warn_terms: []
+  suggestions: []
+  requirement: Ukjent
+  severity:
+    fail: Mangler obligatoriske termer for HELFO kode 6a.
+    warn: Mangler anbefalte termer for HELFO kode 6a.
+'7':
+  version: HELFO-2025-01
+  name: Ukjent HELFO oppgavekode 7
+  required_terms: []
+  warn_terms: []
+  suggestions: []
+  requirement: Ukjent krav for HELFO oppgavekode 7.  Forskriftsteksten mangler.
+  severity:
+    fail: Krav mangler for HELFO oppgavekode 7.  Nødvendige termer ikke funnet i dokumentasjonen.
+    warn: 'Advarsel: Anbefalte termer mangler i dokumentasjonen for HELFO oppgavekode
+      7.'
+'14':
+  version: HELFO-2025-01
+  name: Ukjent HELFO oppgave 14
+  required_terms: []
+  warn_terms: []
+  suggestions: []
+  requirement: Ingen kravspesifikasjon funnet.
+  severity:
+    fail: Krav mangler for HELFO oppgave 14.
+    warn: Anbefalt informasjon mangler for HELFO oppgave 14.
+706f:
+  name: 706f - Ukjent HELFO-kode
+  required_terms: []
+  warn_terms: []
+  suggestions: []
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet for HELFO-kode 706f.
+  severity:
+    fail: Krav mangler for HELFO-kode 706f.  Nødvendige termer er ikke funnet i dokumentasjonen.
+    warn: Dokumentasjonen for HELFO-kode 706f mangler anbefalte termer.  Vurder å
+      legge til disse for bedre forståelse.
