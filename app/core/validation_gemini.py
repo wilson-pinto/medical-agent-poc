@@ -1,198 +1,225 @@
 import re
 import json
+import logging
+from typing import List
+
 import google.generativeai as genai
+
 from app.config import GEMINI_API_KEY
 from app.utils.json_utils import safe_extract_json
-from app.core.diagnosis_search import search_diagnosis, get_diagnosis_descriptions
-from app.core.service_search import get_service_code_descriptions
+from app.core.diagnosis_search import search_diagnosis_with_explanation
+from app.core.pii_analyzer import analyze_text, anonymize_text
 
+# Configure Gemini
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("gemini-1.5-flash")
 
-def check_note_requirements(soap: str, service_codes: list[str]) -> list[dict]:
-    prompt = f"""
-You are a Norwegian medical billing assistant in the PatientSky EHR system.
-Your job is to check whether each service code has the required documentation inside the SOAP note.
+logger = logging.getLogger(__name__)
 
-SOAP Note:
-{soap}
 
-Service Codes:
-{', '.join(service_codes)}
+# ----------------------------
+# Helpers: model + parsing utils
+# ----------------------------
+def _clean_model_text(text: str) -> str:
+    """
+    Remove markdown/json fences and surrounding whitespace.
+    """
+    if text is None:
+        return ""
+    cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=re.MULTILINE)
+    return cleaned.strip()
 
-Respond only with valid JSON (no markdown or explanations), in this format:
-[
-  {{ "code": "301a", "status": "PASS" }},
-  {{ "code": "212b", "status": "FAIL", "reason": "No mention of procedure performed" }}
-]
-"""
-    response = model.generate_content(prompt)
-    return safe_extract_json(response.text)
 
-def extract_diagnoses_from_soap(soap: str) -> list[str]:
-    simplify_prompt = f"""
-You are a clinical assistant working in a Norwegian EHR system.
-
-Your job is to simplify and summarize the following SOAP note to make it concise and easy to understand, while preserving all relevant medical details.
-
-SOAP Note:
-{soap}
-
-Simplified SOAP Note:
-"""
-    simplify_response = model.generate_content(simplify_prompt)
-    simplified_soap = simplify_response.text.strip()
-    print("Simplified SOAP Note:", simplified_soap)
-
-    top_diagnoses = search_diagnosis(simplified_soap, top_k=5)  # Assuming this returns a list of top 5 codes
-    print("Candidate diagnoses:", top_diagnoses)
-
-    final_prompt = f"""
-You are a clinical coding assistant working in a Norwegian EHR system.
-
-Your job is to read the SOAP note and select the most likely ICD-10 or ICPC diagnosis codes from the provided list that match the patient's condition.
-
-SOAP Note:
-{soap}
-
-Candidate Diagnosis Codes:
-{', '.join(top_diagnoses)}
-
-Respond with a JSON array of codes. Example:
-["J02", "R50"]
-"""
-    response = model.generate_content(final_prompt)
-    raw_text = response.text.strip()
-    match = re.search(r"\[[^\[\]]+\]", raw_text)
-    if match:
-        try:
-            return json.loads(match.group(0))
-        except json.JSONDecodeError:
-            return []
-    else:
+def _extract_first_json_array(text: str) -> List:
+    """
+    Finds the first JSON array in the text and returns it as Python list.
+    Returns [] on failure.
+    """
+    if not text:
         return []
-
-def check_service_diagnosis(soap: str, diagnoses: list[str], service_codes: list[str]) -> dict:
-    print("\n=== Starting SOAP check process ===")
-    print(f"Original SOAP note:\n{soap}\n")
-
-    # --- STEP 1: Simplify SOAP ---
-    simplify_prompt = f"""
-You are a clinical assistant working in a Norwegian EHR system.
-
-Your job is to simplify and summarize the following SOAP note to make it concise and easy to understand,
-while preserving all relevant medical details.
-
-SOAP Note:
-{soap}
-
-Simplified SOAP Note:
-"""
-    print("[DEBUG] Sending SOAP note for simplification...")
-    simplify_response = model.generate_content(simplify_prompt)
-    simplified_soap = simplify_response.text.strip()
-    print(f"[RESULT] Simplified SOAP note:\n{simplified_soap}\n")
-
-    # --- STEP 2: Check diagnoses ---
-    diagnosis_descriptions = get_diagnosis_descriptions(diagnoses)
-    print(f"[DEBUG] Diagnosis descriptions: {diagnosis_descriptions}")
-
-    diagnosis_check_prompt = f"""
-You are a clinical coding assistant.
-
-Below is a simplified SOAP note and a list of diagnosis codes with their descriptions.
-For each code, state PASS if the diagnosis is supported by the SOAP note, otherwise FAIL and give a brief reason.
-
-SOAP Note:
-{simplified_soap}
-
-Diagnosis Codes and Descriptions:
-{chr(10).join([f"{code}: {desc}" for code, desc in diagnosis_descriptions.items()])}
-
-Respond only with valid JSON in this format:
-[
-  {{ "code": "J02", "status": "PASS" }},
-  {{ "code": "R50", "status": "FAIL", "reason": "No mention of fever" }}
-]
-"""
-    print("[DEBUG] Sending diagnosis check prompt...")
-    diagnosis_response = model.generate_content(diagnosis_check_prompt)
-    diagnosis_results = safe_extract_json(diagnosis_response.text.strip())
-    print(f"[RESULT] Diagnosis check results:\n{diagnosis_results}\n")
-
-    # Collect valid and failed diagnosis codes for service validation
-    valid_diagnoses = [d["code"] for d in diagnosis_results if d.get("status") == "PASS"]
-    failed_diagnoses = [d["code"] for d in diagnosis_results if d.get("status") == "FAIL"]
-    print(f"[DEBUG] Valid diagnoses found: {valid_diagnoses}")
-    print(f"[DEBUG] Failed diagnoses found: {failed_diagnoses}\n")
-
-    # --- STEP 3: Check service codes ---
-    service_code_descriptions = get_service_code_descriptions(service_codes)
-    service_results = []
-    for code, desc in service_code_descriptions.items():
-        service_check_prompt = f"""
-You are a HELFO claim validation assistant working for GPs in Norway.
-
-Your job is to validate whether the following service code (from the tariff table) is correctly supported by:
-1. A valid diagnosis code (provided separately)
-2. Justification in the SOAP note (free text)
-
-SOAP Note:
-{simplified_soap}
-
-Service Code: {code}
-Description: {desc}
-
-Valid Diagnosis Codes: {', '.join(valid_diagnoses) if valid_diagnoses else "None"}
-Failed Diagnosis Codes: {', '.join(failed_diagnoses) if failed_diagnoses else "None"}
-
-Return a JSON object in this format:
-{{
-  "code": "{code}",
-  "status": "PASS" or "FAIL",
-  "reason": "..."
-}}
-Only return JSON.
-"""
-        print(f"[DEBUG] Sending service code validation prompt for {code}...")
-        service_response = model.generate_content(service_check_prompt)
-        result = safe_extract_json(service_response.text.strip())
-        service_results.append(result)
-        print(f"[RESULT] Service check result for {code}:\n{result}\n")
-
-    print("=== SOAP check process completed ===\n")
-    return {
-        "diagnosis_results": diagnosis_results,
-        "service_results": service_results
-    }
-
-def check_semantic_combo_warning(service_codes: list[str], soap: str) -> list[str]:
-    prompt = f"""
-You are a HELFO billing validation assistant in Norway.
-
-Task:
-Check whether the combination of the following service codes looks suspicious or unusual. These codes were selected together for a single patient consultation.
-
-Service Codes:
-{', '.join(service_codes)}
-
-SOAP Note:
-{soap}
-
-If the combination looks unusual or rarely used together, provide a warning and explain briefly.
-
-Return a list of warnings like:
-[
-  "K01a and 301a are rarely used together unless pre/post-op context is noted.",
-  "1ad and 1ae are rarely valid together without emergency justification."
-]
-
-If no issues are found, return an empty list: []
-"""
-    response = model.generate_content(prompt)
-    raw = response.text.strip()
-    cleaned = re.sub(r"^```json\s*|\s*```$", "", raw.strip(), flags=re.MULTILINE)
+    m = re.search(r"(\[[^\]]*\])", text, flags=re.DOTALL)
+    if not m:
+        return []
+    fragment = m.group(1)
     try:
-        return json.loads(cleaned)
+        return json.loads(fragment)
     except json.JSONDecodeError:
-        return ["Could not parse Gemini output. Please verify manually."]
+        # Try cleaning trailing commas etc. best-effort, otherwise empty
+        try:
+            cleaned = re.sub(r",\s*(\]|})", r"\1", fragment)
+            return json.loads(cleaned)
+        except Exception:
+            logger.exception("Failed to json-decode array fragment.")
+            return []
+
+
+# ----------------------------
+# New Gemini-based grouping / concept extraction
+# ----------------------------
+GROUPING_PROMPT_TEMPLATE = """You are a clinical documentation assistant.
+
+Your task is to extract and group semantically related symptoms, findings, or clinical observations from the input clinical text. The text may be in English or Norwegian.
+
+Rules:
+- Group only the elements that are part of the same condition or refer to the same clinical concept.
+- Do NOT combine unrelated symptoms into a single line.
+- Keep all relevant clinical details with the related symptom (e.g., duration, severity, location, triggers).
+- Do NOT speculate, interpret, or suggest diagnoses here.
+- Output must be in the same language as the input.
+- Be concise and avoid repeating the same concept.
+
+Note: This output will be used later to find and rank diagnoses with another AI step.
+
+✳️ Output format:
+- Return a JSON array of strings.
+- Each element is one grouped clinical concept.
+- Numbering or bullets are not required.
+
+SOAP Note:
+{soap}
+"""
+
+def group_clinical_concepts_with_gemini(soap_text: str) -> list[str]:
+    """
+    Use Gemini to extract and group clinical concepts from the SOAP note.
+    Returns a list of grouped clinical concept strings.
+    """
+    prompt = GROUPING_PROMPT_TEMPLATE.format(soap=soap_text)
+    try:
+        response = model.generate_content(prompt)
+        logger.debug(f"Gemini grouping response: {response.text}")
+        text = _clean_model_text(response.text)
+        concepts = _extract_first_json_array(text)
+        if not concepts:
+            logger.warning("Gemini returned empty or invalid JSON for grouping; falling back to whole SOAP.")
+            return [soap_text.strip()]
+        return concepts
+    except Exception as e:
+        logger.exception("Gemini grouping failed, falling back to whole SOAP.")
+        return [soap_text.strip()]
+
+
+# ----------------------------
+# Gemini reranking for diagnoses
+# ----------------------------
+def rerank_diagnoses_with_gemini(grouped_concepts: List[str], search_results: dict, final_top_n: int = 1):
+    """
+    Use Gemini LLM to rerank and validate diagnoses for each clinical concept.
+    Returns updated detailed_matches with filtered and ranked diagnoses limited to final_top_n per concept.
+    """
+    updated_results = []
+    for concept_block in search_results.get("diagnoses", []):
+        concept = concept_block["concept"]
+        matches = concept_block["matches"]
+
+        prompt = f"""
+You are a medical expert assistant with deep clinical knowledge.
+
+Given the clinical concept below (which may include explicit negations or symptom absences), you are provided a list of possible diagnosis codes and descriptions with similarity scores derived from text embeddings.
+
+Your tasks:
+- Evaluate each diagnosis in the context of the full clinical concept.
+- Prioritize diagnoses that are clinically plausible and explainable by the symptoms and findings.
+- Exclude diagnoses that are unrelated or unlikely given the symptom pattern.
+- Consider classic symptoms, absence of expected symptoms, and differential diagnosis principles.
+- Provide a ranked list of the most relevant diagnoses with a brief clinical reason for inclusion.
+- Output a JSON array with fields: code, description, reason (brief), similarity, rank.
+
+Clinical concept:
+\"\"\"{concept}\"\"\"
+
+Possible diagnoses:
+{json.dumps(matches, indent=2)}
+
+Output only the JSON array.
+"""
+        try:
+            logger.debug(f"Prompt for Gemini rerank for concept: {concept}")
+            resp = model.generate_content(prompt)
+            logger.debug(f"[DEBUG] Gemini raw response for concept '{concept}': {resp.text}")
+            text = _clean_model_text(resp.text)
+
+            try:
+                filtered = safe_extract_json(text)
+            except Exception:
+                logger.warning(f"Failed to parse Gemini response JSON, falling back to original matches for concept: {concept}")
+                filtered = matches  # fallback if JSON parsing fails
+
+            # Limit final top N matches here
+            filtered = filtered[:final_top_n]
+
+            # Add ranking if missing
+            for i, diag in enumerate(filtered):
+                diag['rank'] = i + 1
+
+            updated_results.append({
+                "concept": concept,
+                "matches": filtered
+            })
+        except Exception as e:
+            logger.exception(f"Gemini reranking failed for concept: {concept}")
+            # fallback to original matches with limit
+            updated_results.append({
+                "concept": concept,
+                "matches": matches[:final_top_n]
+            })
+    return updated_results
+
+
+def extract_diagnoses_from_soap(soap: str, top_k: int = 5, min_similarity: float = 0.6, final_top_n: int = 1):
+    """
+    Enhanced flow:
+    1. Remove PII
+    2. Group clinical concepts via Gemini LLM (instead of simple regex splitting)
+    3. For each concept, get top_k diagnosis matches with explanations from FAISS
+    4. Use Gemini LLM to rerank and filter diagnosis matches, limiting final matches to final_top_n
+    5. Return both:
+       - unique_codes: deduplicated list of all matched codes
+       - detailed_matches: full concept → matches mapping
+    """
+    # --- Step 0: PII removal ---
+    try:
+        entities = analyze_text(soap)  # returns analyzer results
+        soap_no_pii = anonymize_text(soap, entities)
+    except Exception:
+        logger.exception("PII removal failed; falling back to original SOAP.")
+        soap_no_pii = soap
+
+    # --- Step 1: Group clinical concepts using Gemini ---
+    try:
+        grouped = group_clinical_concepts_with_gemini(soap_no_pii)
+        logger.debug(f"[DEBUG] Gemini grouped clinical concepts ({len(grouped)}): {grouped}")
+    except Exception:
+        logger.exception("Gemini grouping failed; using whole SOAP as single concept.")
+        grouped = [soap_no_pii.strip()]
+
+    # --- Step 2: Search for diagnoses with explanations ---
+    try:
+        search_results = search_diagnosis_with_explanation(
+            grouped_concepts=grouped, top_k=top_k, min_similarity=min_similarity
+        )
+    except Exception:
+        logger.exception("search_diagnosis_with_explanation failed.")
+        return {
+            "unique_codes": [],
+            "detailed_matches": []
+        }
+
+    # --- Step 3: Gemini reranking with error handling ---
+    try:
+        detailed_matches = rerank_diagnoses_with_gemini(grouped, search_results, final_top_n=final_top_n)
+    except Exception:
+        logger.exception("Gemini reranking failed, using original matches.")
+        detailed_matches = search_results.get("diagnoses", [])
+
+    # --- Step 4: Deduplicate codes ---
+    unique_codes = set()
+    for concept_block in detailed_matches:
+        for match in concept_block.get("matches", []):
+            if match.get("code"):
+                unique_codes.add(match["code"])
+
+    return {
+        "unique_codes": list(unique_codes),
+        "detailed_matches": detailed_matches
+    }
