@@ -1,0 +1,396 @@
+H1:
+  name: Ukjent HELFO oppgave (H1)
+  required_terms: []
+  warn_terms: []
+  suggestions: ''
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet.
+  severity:
+    fail: Krav mangler for HELFO oppgave H1.
+    warn: Anbefalt informasjon mangler for HELFO oppgave H1.
+1ad:
+  name: Enkel pasientkontakt
+  required_terms:
+  - pasientkontakt
+  - råd
+  - veiledning
+  - resept
+  - sykmelding
+  - rekvisisjon
+  - henvisning
+  - delegasjon
+  warn_terms:
+  - blodprøvetaking
+  - konsultasjon
+  suggestions: Sørg for at dokumentasjonen tydelig beskriver hva slags pasientkontakt
+    som har funnet sted. Spesifiser om rådgivning ble gitt av lege eller hjelpepersonell.
+    Hvis blodprøvetaking inngikk, beskriv om det var kombinert med rådgivning.
+  version: HELFO-2025-01
+  requirement: Taksten forutsetter at det gis råd/veiledning ved personlig frammøte
+    eller ved bud. Gjelder også når kontakten/forespørselen resulterer i skriving
+    av resept, sykmelding, rekvisisjon eller henvisning.
+  severity:
+    fail: Mangler nødvendige beskrivelser av pasientkontakt, råd/veiledning og eventuelle
+      utskrifter (resept, sykmelding, rekvisisjon eller henvisning).
+    warn: Dokumentasjonen mangler informasjon om blodprøvetaking eller konsultasjon.  Vurder
+      om dette påvirker korrekt bruk av takst 1ad.
+1bd:
+  name: Ukjent HELFO oppgave 1bd
+  required_terms: []
+  warn_terms: []
+  suggestions: ''
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet.
+  severity:
+    fail: Krav mangler for HELFO oppgave 1bd.
+    warn: Anbefalt informasjon mangler for HELFO oppgave 1bd.
+1bk:
+  name: Ukjent HELFO oppgave 1bk
+  required_terms: []
+  warn_terms: []
+  suggestions: ''
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet.
+  severity:
+    fail: Krav mangler for HELFO oppgave 1bk.
+    warn: Anbefalt informasjon mangler for HELFO oppgave 1bk.
+1i:
+  name: Ukjent HELFO oppgave 1i
+  required_terms: []
+  warn_terms: []
+  suggestions: ''
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet.
+  severity:
+    fail: Mangler påkrevde termer for HELFO oppgave 1i.
+    warn: Mangler anbefalte termer for HELFO oppgave 1i.
+1f:
+  name: Ukjent HELFO-oppgave (1f)
+  required_terms: []
+  warn_terms: []
+  suggestions: ''
+  version: HELFO-2025-01
+  requirement: Ukjent kravspesifikasjon for HELFO-kode 1f.
+  severity:
+    fail: Mangler obligatoriske termer for HELFO-kode 1f.
+    warn: Mangler anbefalte termer for HELFO-kode 1f.
+1g:
+  name: Ukjent HELFO oppgave (1g)
+  required_terms: []
+  warn_terms: []
+  suggestions: ''
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet.
+  severity:
+    fail: Mangler påkrevde termer for HELFO oppgave 1g.
+    warn: Mangler anbefalte termer for HELFO oppgave 1g.
+2ad:
+  name: Konsultasjon hos allmennlege
+  required_terms:
+  - medisinsk vurdering
+  - samtale
+  - pasient til stede
+  - egen behandlingsstad
+  - journalføring
+  warn_terms:
+  - hjelpepersonell
+  - digital konsultasjon
+  - pårørende
+  suggestions: Spesifiser hvilke prøver og enkle prosedyrer som er inkludert. Tydeliggjør
+    skillet mellom konsultasjon og enkel pasientkontakt. Gi eksempler på situasjoner
+    der taksten ikke kan brukes. Forklar kravene til journalføring grundigere.
+  version: HELFO-2025-01
+  requirement: Konsultasjon hos allmennlege som inneholder en medisinsk vurdering/samtale
+    med pasienten til stede på et egnet behandlingssted. Samtalen kan ikke overhøres
+    av andre, bortsett fra legens hjelpepersonell dersom nødvendig.
+  severity:
+    fail: Krav om medisinsk vurdering, samtale med pasienten til stede og journalføring
+      er ikke oppfylt.
+    warn: Dokumentasjonen mangler informasjon om involvering av hjelpepersonell eller
+      digital konsultasjon.  Vurder om dette er relevant.
+2cd:
+  name: Ukjent HELFO oppgave 2cd
+  required_terms: []
+  warn_terms: []
+  suggestions: ''
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet.
+  severity:
+    fail: Krav mangler for HELFO oppgave 2cd.
+    warn: Anbefalt informasjon mangler for HELFO oppgave 2cd.
+2fk:
+  name: Ukjent HELFO oppgave (2fk)
+  required_terms: []
+  warn_terms: []
+  suggestions: ''
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet.
+  severity:
+    fail: Krav mangler i dokumentasjonen.
+    warn: Anbefalt informasjon mangler i dokumentasjonen.
+2ld:
+  name: Konsultasjon hos spesialist
+  required_terms:
+  - konsultasjon
+  - spesialist
+  - medisinsk vurdering
+  - pasient
+  - behandling
+  - samtale
+  warn_terms:
+  - hjelpepersonell
+  - audiograf
+  - prosedyre
+  - undersøkelse
+  suggestions: '- Vær tydelig på hvem som utførte hvilke deler av konsultasjonen.
+
+    - Spesifiser om hjelpepersonell var involvert og i hvilken grad.
+
+    - Dokumenter tydelig den medisinske vurderingen og samtalen.
+
+    - Referer til relevante deler av takstforskriften/normaltariffen (merknad B1,
+    B2, B3).
+
+    '
+  version: HELFO-2025-01
+  requirement: 'Konsultasjon hos spesialist. Ugyldig takstkombinasjon: 1, 2, 11, 12,
+    13, 14, 15, 217c, 621, 622, 623.'
+  severity:
+    fail: Manglende dokumentasjon av nødvendige elementer i konsultasjonen hos spesialist.  Spesifiser
+      konsultasjon, medisinsk vurdering, pasientens tilstedeværelse og at spesialisten
+      utførte en vesentlig del av konsultasjonen.
+    warn: Dokumentasjonen mangler detaljer om involvering av hjelpepersonell eller
+      prosedyrer. Dette kan føre til feil beregning av taksten.
+4a1:
+  name: Ukjent HELFO 4a1 oppgave
+  required_terms: []
+  warn_terms: []
+  suggestions: ''
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet.
+  severity:
+    fail: Krav mangler for HELFO 4a1.
+    warn: Anbefalt informasjon mangler for HELFO 4a1.
+4b1:
+  name: Ukjent HELFO kode 4b1
+  required_terms: []
+  warn_terms: []
+  suggestions: ''
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet.
+  severity:
+    fail: Krav mangler for HELFO kode 4b1.
+    warn: Anbefalt informasjon mangler for HELFO kode 4b1.
+6a:
+  name: Systematisk risikokartlegging av pasientliste (første halvtime)
+  required_terms:
+  - systematisk
+  - risikokartlegging
+  - pasientliste
+  - kronisk sykdom
+  - oppfølging
+  warn_terms:
+  - dataverktøy
+  suggestions: Spesifiser antall pasienter kartlagt. Dokumenter tid brukt på kartlegging
+    og oppfølgingsplaner.
+  version: HELFO-2025-01
+  requirement: Takst 6a brukes for den første halvtimen med systematisk risikokartlegging
+    av pasientlisten for å identifisere pasienter med kronisk sykdom som trenger oppfølging.
+  severity:
+    fail: Mangler obligatoriske termer for systematisk risikokartlegging av pasientliste.  Dokumentasjonen
+      må inneholde beskrivelse av systematisk risikokartlegging, pasientliste, kronisk
+      sykdom og oppfølging.
+    warn: Dokumentasjonen mangler informasjon om bruk av dataverktøy.  Spesifiser
+      om dataverktøy ble brukt, og hvordan dette påvirket tidsbruken.
+'7':
+  name: Tillegg for tolk
+  required_terms:
+  - tolk
+  - døv
+  - språksvak
+  - fremmedspråklig
+  warn_terms:
+  - tilstrekkelig kompetanse
+  suggestions: Spesifiser om tolken må være autorisert eller ikke. Gi eksempler på
+    situasjoner der taksten ikke kan kreves. Forklar hva som menes med "tilstrekkelig
+    kompetanse" hos tolken.
+  version: HELFO-2025-01
+  requirement: Tillegg for undersøkelse/behandling av døve, språksvake og personer
+    som ikke behersker norsk i de tilfeller det er nødvendig med tolk. Kan kun kreves
+    ved bruk av tolk med tilstrekkelig kompetanse.
+  severity:
+    fail: Taksten kan ikke kreves uten dokumentasjon av bruk av tolk for døve, språksvake
+      eller fremmedspråklige pasienter.
+    warn: Det bør dokumenteres at tolken hadde tilstrekkelig kompetanse.
+11e:
+  name: Sykebesøk utenfor ordinær arbeidstid
+  required_terms:
+  - sykebesøk
+  - kreftsykdom
+  - legetilsyn
+  - utenfor arbeidstid
+  warn_terms:
+  - avstand
+  - reisetillegg
+  - tidstillegg
+  suggestions: Spesifiser tidspunkt for sykebesøket. Oppgi avstand til pasientens
+    bolig.
+  version: HELFO-2025-01
+  requirement: Takst 11e kan brukes for sykebesøk utenfor ordinær arbeidstid til pasienter
+    med alvorlig sykdom, for eksempel kreft,  når legetilsyn minst tre ganger per
+    uke er nødvendig.
+  severity:
+    fail: Dokumentasjonen mangler nødvendige termer for å kunne godkjenne takst 11e.  Vennligst
+      spesifiser sykebesøk, kreftsykdom, legetilsyn og at det er utenfor ordinær arbeidstid.
+    warn: Dokumentasjonen mangler informasjon om avstand, reisetillegg eller tidstillegg.  Vurder
+      om dette er relevant og bør inkluderes.
+'100':
+  name: Ukjent HELFO oppgave 100
+  required_terms: []
+  warn_terms: []
+  suggestions: ''
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet.
+  severity:
+    fail: Nødvendige termer mangler i dokumentasjonen.
+    warn: Anbefalte termer mangler i dokumentasjonen.
+'105':
+  name: Ukjent HELFO oppgave 105
+  required_terms: []
+  warn_terms: []
+  suggestions: ''
+  version: HELFO-2025-01
+  requirement: Ukjent krav. Mangler Forskriftstekst.
+  severity:
+    fail: Krav mangler nødvendige termer for HELFO oppgave 105.
+    warn: Dokumentasjon mangler anbefalte termer for HELFO oppgave 105.
+'108':
+  name: HELFO kode 108
+  required_terms: []
+  warn_terms: []
+  suggestions: ''
+  version: HELFO-2025-01
+  requirement: ''
+  severity:
+    fail: Mangler obligatoriske termer for HELFO kode 108.
+    warn: Mangler anbefalte termer for HELFO kode 108.
+612a:
+  name: Samtale med pårørende/foresatt
+  required_terms:
+  - nødvendig samtale
+  - pårørende/foresatt
+  - pasientens behandling
+  - dokumentasjon
+  - hovedinnhold
+  - diagnose
+  warn_terms:
+  - egen sykdom
+  - egen samtalebehov
+  - konsultasjon med pasienten
+  suggestions: Spesifiser hva som ble diskutert i samtalen med pårørende/foresatt.
+    Vær tydelig på hvordan samtalen var nødvendig for pasientens behandling. Sørg
+    for at dokumentasjonen tydelig viser at samtalen var uavhengig av konsultasjon
+    med pasienten.
+  version: HELFO-2025-01
+  requirement: Samtale med pasientens pårørende/foresatt er nødvendig for diagnostisering
+    og behandling av pasienten.  Samtalen skal dokumenteres, inkludert hovedinnhold,
+    og pasientens tilstand som begrunner samtalen. Taksten kan brukes alene uten samtidig
+    konsultasjon med pasienten, men regningen skal registreres på pasienten.
+  severity:
+    fail: Mangler nødvendig dokumentasjon for å underbygge bruk av takst 612a.  Dokumentasjonen
+      må inkludere informasjon om en nødvendig samtale med pårørende/foresatt, relatert
+      til pasientens diagnose og behandling.
+    warn: Dokumentasjonen mangler informasjon som kan indikere at samtalen var relatert
+      til pårørendes egen helsetilstand eller samtalebehov, eller at samtalen var
+      del av en konsultasjon med pasienten.
+612b:
+  name: Samtale med pasientens foreldre/foresatte
+  required_terms:
+  - samtale
+  - foreldre/foresatte
+  - nødvendig
+  - behandling
+  - oppfølging
+  - dokumentasjon
+  - hovedinnhold
+  warn_terms:
+  - konsultasjon
+  - minstelengde
+  - telefon
+  suggestions: Vær spesifikk om hva som ble diskutert i samtalen. Forklar hvorfor
+    samtalen var nødvendig for pasientens behandling. Spesifiser problemstillingen
+    til pasienten.
+  version: HELFO-2025-01
+  requirement: Samtale med pasientens foreldre/foresatte må være nødvendig for diagnostisering
+    og behandling av pasienten.  Dokumentasjon av hovedinnholdet i samtalen, at pasienten
+    har en problemstilling som gir grunnlag for å bruke taksten, og at samtalen var
+    nødvendig for pasientens behandling eller oppfølging, kreves.
+  severity:
+    fail: Taksten kan ikke brukes uten dokumentasjon av en nødvendig samtale med foreldre/foresatte
+      om pasientens problemstilling og behandling.
+    warn: Manglende dokumentasjon av konsultasjonssammenheng kan tyde på feil bruk
+      av taksten.
+'615':
+  name: Samtaleterapi ved psykisk lidelse
+  required_terms:
+  - P-diagnose
+  - ICPC-2
+  - målsetting for samtalen
+  - plan for videre tiltak/oppfølging
+  - strukturert terapi
+  - terapeutisk samtale
+  warn_terms:
+  - somatisk lidelse
+  - blodprøver
+  - blodtrykk
+  suggestions: Spesifiser ICPC-2 koden for P-diagnosen. Dokumentér tydelig varighet
+    av samtaleterapien (minst 15 minutter). Beskriv den strukturerte terapien som
+    ble benyttet. Vær detaljert i beskrivelsen av målsetting og plan for videre oppfølging.
+  version: HELFO-2025-01
+  requirement: Takst 615 kan benyttes ved samtaleterapi (minst 15 minutter) med pasient
+    med psykisk lidelse (P-diagnose etter ICPC-2).  Dokumentasjon må vise målsetting,
+    plan for videre tiltak/oppfølging, strukturert terapi og terapeutisk samtale.
+  severity:
+    fail: Avslag på refusjon. Mangler P-diagnose etter ICPC-2 kodeverket.
+    warn: Ufullstendig dokumentasjon. Vurder om ytterligere dokumentasjon er nødvendig
+      for å oppfylle kravene til taksten.
+'618':
+  name: Ukjent HELFO oppgave 618
+  required_terms: []
+  warn_terms: []
+  suggestions: ''
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet.
+  severity:
+    fail: Krav mangler for HELFO oppgave 618.
+    warn: Anbefaling mangler for HELFO oppgave 618.
+701a:
+  name: 701a - Ukjent
+  required_terms: []
+  warn_terms: []
+  suggestions: ''
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon tilgjengelig.
+  severity:
+    fail: Krav mangler for HELFO-kode 701a.
+    warn: Anbefalt informasjon mangler for HELFO-kode 701a.
+701c:
+  name: 701c - Ukjent feltnavn
+  required_terms: []
+  warn_terms: []
+  suggestions: ''
+  version: HELFO-2025-01
+  requirement: Ukjent kravspesifikasjon for 701c
+  severity:
+    fail: Mangler obligatoriske termer for 701c
+    warn: Mangler anbefalte termer for 701c
+706f:
+  name: Ukjent HELFO-kode 706f
+  required_terms: []
+  warn_terms: []
+  suggestions: ''
+  version: HELFO-2025-01
+  requirement: Ingen kravspesifikasjon funnet for HELFO-kode 706f.
+  severity:
+    fail: Mangler obligatoriske termer for HELFO-kode 706f.
+    warn: Mangler anbefalte termer for HELFO-kode 706f.
