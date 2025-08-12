@@ -1,0 +1,18 @@
+check note requirements:
+
+pass:
+{"soap":"Pasienten kom inn med feber. Temperaturmåling viste 38,5 grader. Det ble gitt råd om hvile, væskeinntak, og smertestillende medisiner. Videre oppfølging av kronisk sykdom inkluderte medisinsk vurdering, behandlingsplan med medikamentjusteringer og livsstilsråd. For hjertekirurgi ble det utført full preoperativ konsultasjon, inkludert risikovurdering, EKG, blodprøver og pasientinformasjon om inngrepet.","service_codes":["2fev","4chr","3hrt"]}
+
+
+ warn and fail:
+ {
+   "soap": "Pasienten kom inn med feber. Temperaturmåling ble utført, og det ble gitt råd om hydrering og bruk av smertestillende.Vedrørende kronisk sykdom ble det gjennomført en oppfølging hvor medisinsk vurdering ble gjort, men behandlingsplanen manglet. For hjertekirurgi ble det nevnt kirurgi og preoperativ konsultasjon, men det var ingen risikovurdering eller detaljer om tester som EKG eller blodprøver.",
+   "service_codes": ["2fev", "4chr", "3hrt"]
+ }
+
+
+
+ Extract diagnosis:
+ {
+   "soap": "Pasienten Anna Hansen (fødselsnummer 12057812345) kontaktet legekontoret via telefon 98764563 og oppga e-postadressen Anna@gmail.com. Hun opplyser om langvarig diaré og magesmerter etter en reise til Asia for tre uker siden, samt vedvarende hoste med feber og nattesvette den siste måneden. I tillegg rapporterer hun om akutt gastroenteritt med oppkast og kraftig magesmerte, og har nylig fått påvist tuberkulose i tarm og lymfeknuter."
+ }
