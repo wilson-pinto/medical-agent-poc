@@ -1,8 +1,10 @@
-#api.py
+# app/api.py
 from fastapi import APIRouter
 from app import config
 from app.schemas import *
-from app.core import rerank_gemini, rerank_openai, validation_gemini, diagnosis_search, service_search
+from app.core import validation_gemini, diagnosis_search, service_search, agentic_diagnoses
+from app.core.agentic_diagnoses import run_agentic_diagnosis_flow
+from app.core.rerankers import rerank_gemini, rerank_openai
 from app.utils.json_utils import safe_extract_json
 from app.core.pii_analyzer import analyze_text, anonymize_text
 from fastapi import Query
@@ -88,4 +90,43 @@ def check_note(req: CheckNoteRequest):
     result = validate_soap_against_codes(req.soap, req.service_codes)
     # result already matches {"overall":..., "results":[PerCodeResult,...]}
     # Ensure results serialization (Pydantic will handle PerCodeResult)
+    return result
+
+
+# New endpoint to test the reranking logic directly
+@router.post("/diagnosis/search/invoke/with-rerank")
+def diagnosis_search_rerank_api(
+    payload: DiagnosisSearchRequest,
+    initial_k: int = Query(50, ge=10, le=100, description="Number of initial candidates from FAISS"),
+    top_k: int = Query(3, ge=1, le=10, description="Number of final results after reranking"),
+):
+    """
+    Search for diagnoses using the new three-step process:
+    1. Fast initial retrieval with a bi-encoder (FAISS).
+    2. Precise reranking with a cross-encoder.
+    3. Returns the top_k most relevant results.
+    """
+    return {"results": diagnosis_search.search_diagnosis_with_explanation(
+        grouped_concepts=[payload.query],  # The function expects a list
+        initial_k=initial_k,
+        top_k=top_k
+    )}
+
+# --- NEW ENDPOINT FOR THE FULL AGENTIC FLOW ---
+@router.post("/ai/v3/extract-diagnoses",
+    summary="Full agentic diagnosis extraction flow",
+    description="""
+    This new endpoint orchestrates the complete five-step agentic process:
+    1. **PII Removal**: Anonymizes the SOAP note.
+    2. **Concept Grouping**: Extracts key clinical concepts.
+    3. **Candidate Retrieval**: Searches for initial diagnosis codes (bi-encoder).
+    4. **Contextual Reranking**: Reranks the candidates based on the full context (cross-encoder).
+    5. **Final Judgment**: Uses an LLM to make a final decision and provide a clear explanation.
+    """
+)
+def extract_diagnoses_agentic_flow(payload: SoapInput):
+    """
+    Runs the full, five-step agentic diagnosis flow.
+    """
+    result = run_agentic_diagnosis_flow(payload.soap)
     return result

@@ -1,4 +1,4 @@
-# app/schemas/validate_note_requirements.py
+# app/schemas_new/validate_note_requirements.py
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 
