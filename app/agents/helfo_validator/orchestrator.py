@@ -1,6 +1,7 @@
-from typing import Dict
+from typing import Dict, Callable, Optional
 from app.schemas_new.agentic_state import AgenticState
 from app.agentic_workflow import compiled_workflow, run_workflow_with_pause
+from app.agents.helfo_validator import live_events
 
 # In-memory session store
 SESSION_STORE: Dict[str, AgenticState] = {}
@@ -13,7 +14,7 @@ class HelFoAgentOrchestrator:
     # ----------------------------
     # Start a new session
     # ----------------------------
-    def start_flow(self, soap_text: str, session_id: str):
+    async def start_flow(self, soap_text: str, session_id: str, event_callback: Optional[Callable] = None):
         print(f"[DEBUG][start_flow] Starting session {session_id} with SOAP text: {soap_text}")
 
         # Initialize state
@@ -32,7 +33,11 @@ class HelFoAgentOrchestrator:
         self._log_state(state, "Initial state in start_flow")
 
         # Run workflow until first pause or completion
-        final_state = run_workflow_with_pause(state)
+        final_state = run_workflow_with_pause(
+            state,
+            event_callback=event_callback,
+            session_id=session_id
+        )
 
         # Store state
         SESSION_STORE[session_id] = final_state
@@ -43,7 +48,7 @@ class HelFoAgentOrchestrator:
     # ----------------------------
     # Resume a paused session
     # ----------------------------
-    def resume_flow(self, session_id: str, user_responses: Dict[str, str]):
+    async def resume_flow(self, session_id: str, user_responses: Dict[str, str], event_callback: Optional[Callable] = None):
         print(f"[DEBUG][resume_flow] Resuming session {session_id} with responses: {user_responses}")
         state = SESSION_STORE.get(session_id)
         if not state:
@@ -57,7 +62,11 @@ class HelFoAgentOrchestrator:
         state.waiting_for_user = False
 
         # Continue workflow
-        final_state = run_workflow_with_pause(state)
+        final_state = run_workflow_with_pause(
+            state,
+            event_callback=event_callback,
+            session_id=session_id
+        )
 
         # Update session
         SESSION_STORE[session_id] = final_state
@@ -92,3 +101,23 @@ class HelFoAgentOrchestrator:
         print(f"user_responses: {getattr(state, 'user_responses', None)}")
         print(f"loop_count: {getattr(state, 'loop_count', 0)}")
         print(f"reasoning_trail: {getattr(state, 'reasoning_trail', [])}")
+
+
+# ----------------------------
+# Helper callback for live events
+# ----------------------------
+async def default_event_callback(session_id: str, state: AgenticState):
+    """
+    Default callback to push updates via WebSocket.
+    Can be passed to start_flow or resume_flow as event_callback.
+    """
+    await live_events.push_update(
+        session_id,
+        {
+            "session_id": session_id,
+            "predicted_service_codes": [sc.dict() for sc in state.predicted_service_codes],
+            "question": state.question,
+            "waiting_for_user": state.waiting_for_user,
+            "reasoning_trail": state.reasoning_trail
+        }
+    )

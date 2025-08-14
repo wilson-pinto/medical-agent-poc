@@ -36,3 +36,7 @@ class ServiceResponse(BaseModel):
 class RespondRequest(BaseModel):
     responses: List[ServiceResponse]
 
+class SubmitSOAPRequest(BaseModel):
+    soap_text: str
+    session_id: Optional[str] = None
+

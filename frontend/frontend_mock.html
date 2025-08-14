@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HelFO Agent Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: white;
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 800px;
+            text-align: center;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+        #workflowLog {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            font-family: monospace;
+            padding: 1rem;
+            height: 400px;
+            overflow-y: scroll;
+            margin-top: 1.5rem;
+            text-align: left;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 class="text-3xl font-bold mb-6">HelFO Agent Workflow Demo</h1>
+
+    <textarea id="soapInput" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter SOAP note here"></textarea>
+    <br>
+    <button id="submitBtn" onclick="initiateWorkflow()" class="mt-4 px-6 py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition duration-300 shadow-lg">Submit SOAP</button>
+
+    <div id="workflowLog"></div>
+
+    <!-- Container for dynamic answer input -->
+    <div id="answerContainer" class="mt-4"></div>
+</div>
+
+<script>
+    let sessionId = null;
+    let ws = null;
+
+    function log(msg) {
+        const logDiv = document.getElementById('workflowLog');
+        const time = new Date().toISOString();
+        logDiv.textContent += `[${time}] ${msg}\n`;
+        logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function initiateWorkflow() {
+        const soapText = document.getElementById('soapInput').value;
+        if (!soapText.trim()) {
+            alert("Please enter a SOAP note first!");
+            return;
+        }
+
+        document.getElementById('submitBtn').disabled = true;
+        sessionId = crypto.randomUUID();
+        log(`Generated session ID: ${sessionId}`);
+
+        // Establish the WebSocket connection first - NOTE: /ws prefix from main.py
+        const wsUrl = `ws://${window.location.host}/ws/agentic-workflow/${sessionId}`;
+        log(`Attempting to connect WebSocket: ${wsUrl}`);
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+            log("✅ WebSocket connection opened.");
+            // Wait a bit for the connection to be registered on the server side
+            log("Waiting 500ms for server-side registration...");
+            setTimeout(async () => {
+                log("Sending SOAP request...");
+                await sendSoapRequest(soapText);
+            }, 500);
+        };
+
+        ws.onmessage = function(event) {
+            log(`📥 WS message received: ${event.data}`);
+
+            let msg;
+            try {
+                msg = JSON.parse(event.data);
+            } catch (err) {
+                log(`❌ Failed to parse WS message: ${err}`);
+                return;
+            }
+
+            // Handle both old format (direct) and new format (with event_type)
+            let eventType, payload;
+            if (msg.event_type && msg.payload) {
+                eventType = msg.event_type;
+                payload = msg.payload;
+            } else {
+                // Direct format - try to infer event type
+                if (msg.question && msg.session_id) {
+                    eventType = 'waiting_for_user';
+                    payload = msg;
+                } else {
+                    eventType = 'workflow_step';
+                    payload = msg;
+                }
+            }
+
+            log(`🔍 Event type: ${eventType}`);
+            log(`Payload: ${JSON.stringify(payload, null, 2)}`);
+
+            if (eventType === 'waiting_for_user' && payload.question) {
+                const container = document.getElementById('answerContainer');
+                container.innerHTML = '';
+
+                const label = document.createElement('div');
+                label.textContent = payload.question;
+                label.className = "text-lg font-semibold mb-2";
+                container.appendChild(label);
+
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.id = 'userAnswer';
+                input.className = "w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500";
+                input.placeholder = 'Type your answer here';
+
+                const btn = document.createElement('button');
+                btn.textContent = 'Submit Answer';
+                btn.className = "mt-2 px-4 py-2 bg-green-600 text-white font-bold rounded-full hover:bg-green-700 transition duration-300 shadow-md";
+                btn.onclick = () => {
+                    const answerText = input.value.trim();
+                    if (!answerText) {
+                        alert("Please type an answer!");
+                        return;
+                    }
+                    const service_code = payload.service_code || "demo_code";
+                    const sendPayload = {
+                        responses: [
+                            {
+                                service_code: service_code,
+                                answers: { response: answerText }
+                            }
+                        ]
+                    };
+                    log(`📤 Sending WS answer: ${JSON.stringify(sendPayload)}`);
+                    ws.send(JSON.stringify(sendPayload));
+                    container.innerHTML = '';
+                };
+
+                container.appendChild(input);
+                container.appendChild(btn);
+            }
+        };
+
+        ws.onclose = (event) => {
+            log(`🔌 WebSocket closed (code: ${event.code}, reason: ${event.reason || "none"})`);
+        };
+
+        ws.onerror = (err) => {
+            log(`⚠️ WebSocket error: ${err.message || err}`);
+            console.error("WebSocket error event:", err);
+        };
+    }
+
+    async function sendSoapRequest(soapText) {
+        try {
+            log("📤 Sending SOAP request to server...");
+            const response = await fetch("/ws/submit_soap", {  // Note: /ws prefix
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    soap_text: soapText,
+                    session_id: sessionId
+                })
+            });
+
+            if (!response.ok) {
+                const err = await response.text();
+                log(`❌ Failed to submit SOAP: ${err}`);
+                document.getElementById('submitBtn').disabled = false;
+                return;
+            }
+
+            const data = await response.json();
+            log(`📨 Session started successfully: ${data.session_id}`);
+            log(`🤔 Initial question: ${data.question || "None"}`);
+
+        } catch (error) {
+            log(`❌ Fetch error submitting SOAP: ${error}`);
+            document.getElementById('submitBtn').disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>
