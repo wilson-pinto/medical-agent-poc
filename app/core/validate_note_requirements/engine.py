@@ -1,12 +1,12 @@
-# app/core/validate_note_requirements/engine.py
 import os
 import logging
 import json
-import google.generativeai as genai
 from typing import List, Dict, Any
 from app.core.validate_note_requirements.rules_loader import load_rules
 from app.core.validate_note_requirements.prompts import build_gemini_prompt
 from app.schemas_new.validate_note_requirements import PerCodeResult
+
+import google.generativeai as genai
 
 logger = logging.getLogger(__name__)
 
@@ -20,113 +20,106 @@ else:
     GEMINI_MODEL = None
 
 def _simple_term_check(soap: str, required_terms: List[str]) -> List[str]:
-    """Return list of terms that are missing (case-insensitive)."""
-    missing = []
+    """Return terms missing from the SOAP text."""
     s = soap.lower()
-    for term in required_terms:
-        if term.lower() not in s:
-            missing.append(term)
-    return missing
+    return [term for term in required_terms if term.lower() not in s]
 
-def _call_gemini(prompt: str, timeout_s: int = 6) -> Dict[str, Any]:
-    """Call Gemini (safely) and parse JSON. Returns dict or raises."""
+def _call_gemini(prompt: str) -> Dict[str, Any]:
+    """Call Gemini safely and return JSON dict."""
     if GEMINI_MODEL is None:
-        raise RuntimeError("Gemini not available/configured.")
-    resp = GEMINI_MODEL.generate_content(prompt)
-    text = resp.text.strip()
-    # try to extract JSON object
+        raise RuntimeError("Gemini not configured.")
     try:
-        # If the model returns fences, strip them
+        resp = GEMINI_MODEL.generate_content(prompt)
+        text = resp.text.strip()
         if text.startswith("```"):
-            # remove triple backticks blocks
             text = text.strip("` \n")
-        return json.loads(text)
+        data = json.loads(text)
+        # Ensure suggestions is always a list
+        if not isinstance(data.get("suggestions"), list):
+            data["suggestions"] = []
+        return data
     except Exception:
-        # Try to find first JSON substring
         import re
         m = re.search(r'(\{.*\})', text, flags=re.DOTALL)
         if m:
-            fragment = m.group(1)
             try:
-                return json.loads(fragment)
+                data = json.loads(m.group(1))
+                if not isinstance(data.get("suggestions"), list):
+                    data["suggestions"] = []
+                return data
             except Exception:
                 logger.exception("Gemini returned non-JSON response.")
-        raise
+        logger.warning("Gemini response could not be parsed; returning empty dict.")
+        return {"suggestions": []}
 
-def validate_soap_against_codes(soap: str, service_codes: List[str]) -> Dict[str, Any]:
-    """Main function. Returns structure matching CheckNoteResponse."""
+def validate_soap_against_rules(soap: str, service_codes: List[str]) -> List[dict]:
+    """Validate SOAP note against HELFO service codes, return list of dicts."""
     rules = load_rules()
-    results = []
+    results: List[PerCodeResult] = []
+
     for code in service_codes:
         code_key = str(code).strip()
         rule = rules.get(code_key)
+
         if not rule:
-            r = PerCodeResult(
-                service_code=code_key,
-                compliance="unknown",
-                missing_terms=[],
-                suggestions=None,
-                gemini_used=False,
-                gemini_reasoning=None,
-                rule_version=None
+            results.append(
+                PerCodeResult(
+                    service_code=code_key,
+                    compliance="unknown",
+                    missing_terms=[],
+                    suggestions=[],
+                    gemini_used=False,
+                    gemini_reasoning=None,
+                    rule_version=None
+                )
             )
-            results.append(r)
             continue
 
         required_terms = rule.get("required_terms", [])
         missing_terms = _simple_term_check(soap, required_terms)
 
-        # Default assumption before Gemini
-        compliance = "fail"
+        compliance = "fail" if missing_terms else "pass"
         gemini_used = False
         gemini_reasoning = None
 
-        # If nothing missing → deterministic pass
-        if not missing_terms:
-            compliance = "pass"
-        elif USE_GEMINI and GEMINI_MODEL:
+        if missing_terms and USE_GEMINI and GEMINI_MODEL:
             try:
                 prompt = build_gemini_prompt(code_key, rule.get("requirement", ""), soap)
                 resp = _call_gemini(prompt)
                 gemini_used = True
                 gemini_reasoning = json.dumps(resp)
 
-                # Expect: {"status": "pass"|"warn"|"fail", ...}
+                # Normalize compliance
                 status = resp.get("status", "").lower()
                 if status in ["pass", "warn", "fail"]:
                     compliance = status
                 else:
-                    # fallback: treat "pass" bool if older prompt format
                     compliance = "pass" if resp.get("pass") else "fail"
 
-                # Sync missing terms if model provided them
+                # Use Gemini's missing_terms if provided
                 if isinstance(resp.get("missing_terms"), list):
                     missing_terms = resp["missing_terms"]
 
+                # Ensure suggestions is always a list
+                suggestions = resp.get("suggestions") or []
             except Exception:
                 logger.exception("Gemini call failed; using deterministic result.")
                 compliance = "fail"
+                suggestions = rule.get("suggestions") or []
+        else:
+            suggestions = rule.get("suggestions") or []
 
-        r = PerCodeResult(
-            service_code=code_key,
-            compliance=compliance,
-            missing_terms=missing_terms,
-            suggestions=rule.get("suggestions", []),
-            gemini_used=gemini_used,
-            gemini_reasoning=gemini_reasoning,
-            rule_version=rule.get("version")
+        results.append(
+            PerCodeResult(
+                service_code=code_key,
+                compliance=compliance,
+                missing_terms=missing_terms,
+                suggestions=suggestions,
+                gemini_used=gemini_used,
+                gemini_reasoning=gemini_reasoning,
+                rule_version=rule.get("version")
+            )
         )
-        results.append(r)
 
-    # Overall status
-    statuses = [r.compliance for r in results]
-    if all(s == "pass" for s in statuses):
-        overall = "pass"
-    elif any(s == "pass" for s in statuses) or any(s == "warn" for s in statuses):
-        overall = "partial"
-    elif all(s == "unknown" for s in statuses):
-        overall = "unknown"
-    else:
-        overall = "fail"
-
-    return {"overall": overall, "results": results}
+    # Convert Pydantic objects to dicts for nodes
+    return [r.dict() for r in results]

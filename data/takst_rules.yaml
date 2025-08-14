@@ -1,118 +1,48 @@
-"1ad":
-  name: "Enkel pasientkontakt ved personlig frammøte"
-  required_terms:
-    - "råd"
-    - "veiledning"
-  warn_terms:
-    - "personlig frammøte"
-  suggestions:
-    - "Document that advice/guidance was given and that patient was seen in person."
-  version: "HELFO-2025-01"
-  requirement: "Taksten krever personlig møte og at råd/veiledning ble gitt. Gjelder også ved resept eller henvisning."
-  severity:
-    fail: "Missing advice or guidance."
-    warn: "Advice/guidance mentioned but missing confirmation of in-person meeting."
+MT001:
+  requirement: "Must document the patient's temperature and advice regarding fever."
+  required_terms: ["temperature", "fever", "advice"]
+  suggestions: ["Include the patient's temperature measurement and medical advice."]
+  version: "1.0"
 
-"1bd":
-  name: "Enkel pasientkontakt skriftlig/telefon"
-  required_terms:
-    - "råd"
-  warn_terms:
-    - "telefon"
-  suggestions:
-    - "Note phone or electronic contact and the advice given."
-  version: "HELFO-2025-01"
-  requirement: "Gjelder skriftlig eller telefonisk kontakt der råd/veiledning gis."
-  severity:
-    fail: "Missing advice."
-    warn: "Advice documented but missing contact type."
+MT002:
+  requirement: "Must document the patient's blood pressure and assessment."
+  required_terms: ["blood pressure", "assessment"]
+  suggestions: ["Include the blood pressure measurement and assessment."]
+  version: "1.0"
 
-"1bk":
-  name: "Enkel pasientkontakt skriftlig, telefon eller elektronisk kommunikasjon på legevakt (kveld)"
-  required_terms:
-    - "råd"
-    - "veiledning"
-  warn_terms:
-    - "skriftlig"
-    - "telefon"
-    - "elektronisk kommunikasjon"
-    - "legevakt"
-    - "kveld"
-  suggestions:
-    - "Document that advice/guidance was given during written, phone, or electronic contact at the emergency service in the evening."
-    - "Ensure to mention if contact resulted in a prescription, sick note, referral, or requisition."
-  version: "HELFO-2025-01"
-  requirement: >
-    Taksten forutsetter at det gis råd/veiledning ved skriftlig, telefonisk eller elektronisk kommunikasjon på legevakt (kveld).
-  severity:
-    fail: "Missing advice or guidance."
-    warn: "Advice or guidance mentioned but missing confirmation of contact type or emergency service timing."
+140l:
+  requirement: "Must document evaluation and management details for abdominal pain and nausea."
+  required_terms: ["abdominal pain", "nausea", "evaluation", "management"]
+  suggestions: ["Document the patient's abdominal pain and nausea assessment, including management plan."]
+  version: "1.0"
 
-"2fev":
-  name: "Fever assessment and management"
-  required_terms:
-    - "feber"
-    - "temperaturmåling"
-    - "råd"
-  optional_terms:
-    - "smertestillende"
-    - "hydrering"
-  warn_terms:
-    - "uspesifikke symptomer"
-    - "manglende temperaturverdi"
-  suggestions:
-    - "Document patient’s temperature measurement and advice given regarding fever management."
-    - "Include any medication recommendations such as analgesics or hydration advice."
-  version: "HELFO-2025-01"
-  requirement: >
-    Taksten gjelder vurdering og behandling av feber, inkludert temperaturmåling og råd om symptomlindring.
-  severity:
-    fail: "Missing documentation of fever or temperature measurement."
-    warn: "Documentation vague on symptoms or missing explicit temperature value."
+140m:
+  requirement: "Must document evaluation and management details for abdominal pain and nausea."
+  required_terms: ["abdominal pain", "nausea", "evaluation", "management"]
+  suggestions: ["Document the patient's abdominal pain and nausea assessment, including management plan."]
+  version: "1.0"
 
-"3hrt":
-  name: "Heart surgery preoperative consultation"
-  required_terms:
-    - "hjerte"
-    - "kirurgi"
-    - "preoperativ vurdering"
-    - "risikovurdering"
-  optional_terms:
-    - "EKG"
-    - "blodprøver"
-  warn_terms:
-    - "manglende risikovurdering"
-    - "uspesifikk konsultasjon"
-  suggestions:
-    - "Document preoperative heart surgery assessment including risk evaluation."
-    - "Include tests performed such as EKG and blood samples."
-  version: "HELFO-2025-01"
-  requirement: >
-    Taksten gjelder preoperativ vurdering for hjertekirurgi med risikovurdering.
-  severity:
-    fail: "Missing key elements of preoperative cardiac assessment."
-    warn: "Risk assessment missing or consultation described vaguely."
+140q:
+  requirement: "Must document evaluation and management details for abdominal pain and nausea."
+  required_terms: ["abdominal pain", "nausea", "evaluation", "management"]
+  suggestions: ["Document the patient's abdominal pain and nausea assessment, including management plan."]
+  version: "1.0"
 
-"4chr":
-  name: "Chronic disease management visit"
-  required_terms:
-    - "kronisk sykdom"
-    - "oppfølging"
-    - "medisinsk vurdering"
-    - "behandlingsplan"
-  optional_terms:
-    - "livsstilsråd"
-    - "medikamentjustering"
-  warn_terms:
-    - "manglende behandlingsplan"
-    - "generelle kommentarer uten vurdering"
-  suggestions:
-    - "Document a thorough follow-up including medical evaluation and treatment plan."
-    - "Include lifestyle advice or medication adjustments if relevant."
-  version: "HELFO-2025-01"
-  requirement: >
-    Taksten gjelder oppfølging av pasienter med kroniske sykdommer, med medisinsk vurdering og behandlingsplan.
-  severity:
-    fail: "Missing documentation of treatment plan or medical evaluation."
-    warn: "Treatment plan missing or notes too general."
+140n:
+  requirement: "Must document evaluation and management details for abdominal pain and nausea."
+  required_terms: ["abdominal pain", "nausea", "evaluation", "management"]
+  suggestions: ["Document the patient's abdominal pain and nausea assessment, including management plan."]
+  version: "1.0"
 
+
+140p:
+  requirement: "Must document evaluation and management details for abdominal pain and nausea."
+  required_terms: ["abdominal pain", "nausea", "evaluation", "management"]
+  suggestions: ["Document the patient's abdominal pain and nausea assessment, including management plan."]
+  version: "1.0"
+
+140r:
+  requirement: "Must document evaluation and management details for abdominal pain and nausea."
+  required_terms: ["abdominal pain", "nausea", "evaluation", "management"]
+  suggestions: ["Document the patient's abdominal pain and nausea assessment, including management plan."]
+  version: "1.0"

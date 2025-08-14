@@ -5,8 +5,9 @@ from functools import lru_cache
 
 RULES_FILE = os.path.join("data", "takst_rules.yaml")
 
-@lru_cache(maxsize=1)
+# @lru_cache(maxsize=1)
 def load_rules():
+    print("loading rules")
     """Load takst rules from YAML and return as dict keyed by service code (string)."""
     if not os.path.exists(RULES_FILE):
         raise FileNotFoundError(f"Rules file not found: {RULES_FILE}")
@@ -14,4 +15,5 @@ def load_rules():
         data = yaml.safe_load(f)
     # Ensure keys are strings & normalized
     normalized = {str(k).strip(): v for k, v in (data or {}).items()}
+    print(normalized)
     return normalized

@@ -16,7 +16,7 @@ index = faiss.read_index(INDEX_PATH)
 # Load DB
 conn = sqlite3.connect(DB_PATH, check_same_thread=False)
 cursor = conn.cursor()
-cursor.execute("SELECT * FROM codes ORDER BY id")
+cursor.execute("SELECT * FROM service_codes ORDER BY id")
 all_codes = cursor.fetchall()
 
 # --- Verification ---

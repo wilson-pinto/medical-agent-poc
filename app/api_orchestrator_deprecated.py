@@ -1,30 +1,24 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
+from typing import Dict
 import uuid
-from typing import List, Dict
 
 from app.agents.helfo_validator.orchestrator import HelFoAgentOrchestrator, SESSION_STORE
-from app.schemas_new.agentic_state import RespondRequest
-
 
 router = APIRouter()
 agent_orchestrator = HelFoAgentOrchestrator()
 
 
 # ----------------------------
-# Endpoint: Submit minimal SOAP note
+# Start workflow with SOAP note (stops at first missing info)
 # ----------------------------
 @router.post("/submit_soap")
 async def submit_soap(soap_text: str):
     session_id = str(uuid.uuid4())
     try:
-        # Start a new session
-        output = agent_orchestrator.start_flow(
-            soap_text=soap_text,
-            session_id=session_id
-        )
+        output = agent_orchestrator.start_flow(soap_text, session_id)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error starting session: {e}")
+        raise HTTPException(status_code=500, detail=f"Workflow failed: {e}")
 
     state = SESSION_STORE.get(session_id)
     return JSONResponse(
@@ -39,19 +33,20 @@ async def submit_soap(soap_text: str):
 
 
 # ----------------------------
-# Endpoint: Respond to missing info questions
+# Submit user responses and continue workflow
 # ----------------------------
 @router.post("/respond")
-async def respond(session_id: str, request: RespondRequest):
+async def respond(session_id: str, responses: Dict[str, str]):
     state = SESSION_STORE.get(session_id)
     if not state:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    # Convert list of responses to internal dict format
-    state.user_responses = {r.service_code: r.answers for r in request.responses}
+    try:
+        output = agent_orchestrator.resume_flow(session_id, responses)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Workflow resume failed: {e}")
 
-    output = agent_orchestrator.resume_flow(session_id=session_id, user_responses=state.user_responses)
-
+    state = SESSION_STORE.get(session_id)
     return JSONResponse(
         content={
             "session_id": session_id,
@@ -64,7 +59,7 @@ async def respond(session_id: str, request: RespondRequest):
 
 
 # ----------------------------
-# Endpoint: Retrieve current session state
+# Get current session state
 # ----------------------------
 @router.get("/state/{session_id}")
 async def get_state(session_id: str):
@@ -72,12 +67,15 @@ async def get_state(session_id: str):
     if not state:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    state_dict = state.dict()
-    # Ensure frontend sees current waiting status and question
-    state_dict["question"] = getattr(state, "question", None)
-    state_dict["waiting_for_user"] = getattr(state, "waiting_for_user", False)
-    state_dict["loop_count"] = getattr(state, "loop_count", 0)
-    state_dict["max_loops"] = getattr(state, "max_loops", 5)
-    state_dict["user_responses"] = getattr(state, "user_responses", {})
-
-    return JSONResponse(content=state_dict)
+    return JSONResponse(
+        content={
+            "session_id": session_id,
+            "soap_text": getattr(state, "soap_text", ""),
+            "question": getattr(state, "question", None),
+            "waiting_for_user": getattr(state, "waiting_for_user", False),
+            "predicted_service_codes": [sc.dict() for sc in getattr(state, "predicted_service_codes", [])],
+            "reasoning_trail": getattr(state, "reasoning_trail", []),
+            "loop_count": getattr(state, "loop_count", 0),
+            "max_loops": getattr(state, "max_loops", 5),
+        }
+    )
