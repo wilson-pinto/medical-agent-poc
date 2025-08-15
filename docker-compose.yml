@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  # The Redis database service
+  redis:
+    image: redis:alpine
+    container_name: soap_redis
+
+  # The Python application service
+  app:
+    build: .
+    container_name: soap_app
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    depends_on:
+      - redis

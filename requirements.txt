@@ -45,3 +45,4 @@ nb-core-news-sm==3.7.0
 pytest==8.4.1
 tqdm==4.67.1
 rich==14.1.0
+redis

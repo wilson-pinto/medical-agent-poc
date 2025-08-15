@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HelFO Agent Workflow Demo</title>
+    <!-- Use Tailwind CSS for a sleek, modern design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font for clean typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+        }
+        .container {
+            background-color: white;
+            padding: 2.5rem;
+            border-radius: 1.5rem; /* More rounded corners */
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            max-width: 900px; /* Wider container */
+        }
+        #workflowLog {
+            background-color: #1f2937; /* Dark background for console-like feel */
+            color: #d1d5db; /* Light text color */
+            border-radius: 0.75rem;
+            font-family: monospace;
+            padding: 1.5rem;
+            height: 350px;
+            overflow-y: auto;
+            text-align: left;
+            white-space: pre-wrap;
+            border: 2px solid #374151; /* Subtle border */
+        }
+        .log-entry.info { color: #9ca3af; }
+        .log-entry.success { color: #10b981; }
+        .log-entry.error { color: #ef4444; }
+
+        /* Custom scrollbar for log */
+        #workflowLog::-webkit-scrollbar {
+            width: 8px;
+        }
+        #workflowLog::-webkit-scrollbar-track {
+            background: #374151;
+            border-radius: 10px;
+        }
+        #workflowLog::-webkit-scrollbar-thumb {
+            background-color: #4b5563;
+            border-radius: 10px;
+            border: 2px solid #1f2937;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-8">
+<div class="container w-full">
+    <div class="text-center mb-8">
+        <h1 class="text-4xl font-extrabold text-gray-800">HelFO Agent Workflow</h1>
+        <p class="text-gray-500 mt-2">Simulating a robust, self-correcting agent workflow.</p>
+    </div>
+
+    <!-- Main workflow UI section -->
+    <div class="grid md:grid-cols-2 gap-8">
+        <!-- Left side: Input and Status -->
+        <div class="flex flex-col">
+            <div id="statusDisplay" class="bg-blue-100 text-blue-800 font-bold p-4 rounded-xl flex items-center justify-center mb-6 shadow-md transition-all duration-300">
+                <span id="statusMessage">Awaiting SOAP note...</span>
+            </div>
+
+            <textarea id="soapInput" class="w-full p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-200 transition-all duration-300 text-gray-700" placeholder="Enter SOAP note here..."></textarea>
+
+            <button id="submitBtn" class="mt-4 w-full px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition duration-300 shadow-lg">
+                Submit SOAP Note
+            </button>
+
+            <!-- Container for dynamic answer input -->
+            <div id="answerContainer" class="mt-6 hidden">
+                <!-- Dynamic question and input fields will be injected here -->
+            </div>
+
+            <!-- Final result display -->
+            <div id="finalResult" class="mt-6 hidden">
+                <div class="bg-green-100 text-green-800 p-4 rounded-xl shadow-md">
+                    <h3 class="text-lg font-bold mb-3">Workflow Complete!</h3>
+                    <p id="finalContent" class="text-sm font-medium whitespace-pre-wrap"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right side: Live Log -->
+        <div class="flex flex-col">
+            <h2 class="text-lg font-bold text-gray-800 mb-2">Live Workflow Log</h2>
+            <div id="workflowLog"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let sessionId = null;
+    let ws = null;
+    let currentServiceCode = null;
+
+    const statusDisplay = document.getElementById('statusDisplay');
+    const statusMessage = document.getElementById('statusMessage');
+    const submitBtn = document.getElementById('submitBtn');
+    const answerContainer = document.getElementById('answerContainer');
+    const finalResult = document.getElementById('finalResult');
+
+    function log(msg, type = 'info') {
+        const logDiv = document.getElementById('workflowLog');
+        const time = new Date().toLocaleTimeString();
+        const logEntry = document.createElement('div');
+        logEntry.className = `log-entry ${type}`;
+        logEntry.innerHTML = `<span class="font-bold">[${time}]</span> ${msg}`;
+        logDiv.appendChild(logEntry);
+        logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    // --- Core UI State Management Function ---
+    // This function updates the UI based on the agent's current state
+    function updateUIState(state, data = {}) {
+        // Hide all dynamic sections initially
+        answerContainer.classList.add('hidden');
+        finalResult.classList.add('hidden');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit SOAP Note';
+
+        // Use switch for dynamic state handling
+        switch (state) {
+            case 'processing':
+                statusDisplay.className = 'bg-blue-100 text-blue-800 font-bold p-4 rounded-xl flex items-center justify-center mb-6 shadow-md transition-all duration-300 animate-pulse';
+                statusMessage.textContent = 'Agent is processing...';
+                submitBtn.disabled = true;
+                break;
+            case 'awaiting_input':
+                statusDisplay.className = 'bg-yellow-100 text-yellow-800 font-bold p-4 rounded-xl flex items-center justify-center mb-6 shadow-md transition-all duration-300';
+                statusMessage.textContent = 'Agent requires more information!';
+                answerContainer.classList.remove('hidden');
+                renderAnswerForm(data);
+                break;
+            case 'complete':
+                statusDisplay.className = 'bg-green-100 text-green-800 font-bold p-4 rounded-xl flex items-center justify-center mb-6 shadow-md transition-all duration-300';
+                statusMessage.textContent = 'Workflow Complete!';
+                finalResult.classList.remove('hidden');
+                // Display the entire state for a clearer result
+                document.getElementById('finalContent').textContent = JSON.stringify(data, null, 2);
+                break;
+            case 'error':
+                statusDisplay.className = 'bg-red-100 text-red-800 font-bold p-4 rounded-xl flex items-center justify-center mb-6 shadow-md transition-all duration-300';
+                statusMessage.textContent = 'An error occurred!';
+                log(`Error: ${data.message}`, 'error');
+                break;
+            default:
+                // Fallback for any unknown states
+                statusDisplay.className = 'bg-gray-100 text-gray-800 font-bold p-4 rounded-xl flex items-center justify-center mb-6 shadow-md transition-all duration-300';
+                statusMessage.textContent = 'Awaiting SOAP note...';
+        }
+    }
+
+    function renderAnswerForm(data) {
+        answerContainer.innerHTML = '';
+        const questionText = data.question;
+
+        if (!questionText) {
+            return;
+        }
+
+        const termsMatch = questionText.match(/please provide: (.*)/);
+        const missingTerms = termsMatch?.[1]?.split(', ').map(term => term.trim()) || [];
+
+        const questionLabel = document.createElement('p');
+        questionLabel.textContent = questionText;
+        questionLabel.className = "text-md font-semibold mb-3 text-gray-600";
+        answerContainer.appendChild(questionLabel);
+
+        const inputsDiv = document.createElement('div');
+        inputsDiv.id = 'answerInputs';
+        inputsDiv.className = 'space-y-3';
+        answerContainer.appendChild(inputsDiv);
+
+        missingTerms.forEach(term => {
+            const inputGroup = document.createElement('div');
+            inputGroup.className = 'relative';
+            inputGroup.innerHTML = `
+                    <input type="text" id="userAnswer-${term.replace(/\s/g, '-')}" class="w-full p-3 border-2 border-gray-300 rounded-lg pr-12 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-700" placeholder="Enter details for '${term}'">
+                `;
+            inputsDiv.appendChild(inputGroup);
+        });
+
+        const btn = document.createElement('button');
+        btn.textContent = 'Submit Answers';
+        btn.className = "mt-4 w-full px-4 py-2 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition duration-300 shadow-lg";
+
+        btn.onclick = () => {
+            const answers = {};
+            let allAnswered = true;
+            missingTerms.forEach(term => {
+                const input = document.getElementById(`userAnswer-${term.replace(/\s/g, '-')}`);
+                if (input.value.trim() === '') {
+                    allAnswered = false;
+                }
+                answers[term] = input.value.trim();
+            });
+
+            if (!allAnswered) {
+                // IMPORTANT: Switched alert() to a custom message box or log for better UX
+                log("Please provide an answer for all terms!", 'error');
+                return;
+            }
+
+            const serviceCode = data?.predicted_service_codes?.[0]?.code;
+            if (!serviceCode) {
+                log("Error: Service code not received from agent.", 'error');
+                return;
+            }
+
+            const sendPayload = {
+                responses: [{
+                    service_code: serviceCode,
+                    answers: answers
+                }]
+            };
+
+            log(`Sending user answers to backend...`);
+            ws.send(JSON.stringify(sendPayload));
+            updateUIState('processing'); // Transition to processing state
+        };
+        answerContainer.appendChild(btn);
+    }
+
+    // --- Core Workflow Logic ---
+    function initiateWorkflow() {
+        const soapText = document.getElementById('soapInput').value;
+        if (!soapText.trim()) {
+            // IMPORTANT: Switched alert() to a custom message box or log for better UX
+            log("Please enter a SOAP note first!", 'error');
+            return;
+        }
+
+        updateUIState('processing');
+        document.getElementById('soapInput').disabled = true;
+
+        sessionId = crypto.randomUUID();
+        log(`Session created: ${sessionId}`);
+
+        const wsUrl = `ws://${window.location.host}/ws/agentic-workflow/${sessionId}`;
+        log(`Connecting to WebSocket at ${wsUrl}...`);
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+            log("WebSocket connection opened.", 'success');
+            ws.send(JSON.stringify({ soap_text: soapText }));
+        };
+
+        ws.onmessage = function(event) {
+            log(`Received message: ${event.data}`);
+            try {
+                const msg = JSON.parse(event.data);
+
+                if (msg.event_type === 'waiting_for_user') {
+                    updateUIState('awaiting_input', msg.payload);
+                } else if (msg.event_type === 'final_document') {
+                    updateUIState('complete', msg.payload);
+                } else if (msg.event_type === 'error') {
+                    updateUIState('error', msg.payload);
+                } else {
+                    // Handle any other unknown states from the backend
+                    updateUIState('processing');
+                }
+            } catch (err) {
+                log(`Failed to parse WebSocket message: ${err}`, 'error');
+                updateUIState('error', { message: 'Failed to parse message from backend.' });
+            }
+        };
+
+        ws.onclose = (event) => {
+            log(`WebSocket closed (code: ${event.code})`, 'info');
+            document.getElementById('soapInput').disabled = false;
+        };
+
+        ws.onerror = (err) => {
+            log(`WebSocket error: ${err.message || 'unknown'}`, 'error');
+            console.error("WebSocket error event:", err);
+        };
+    }
+
+    document.getElementById('submitBtn').addEventListener('click', initiateWorkflow);
+
+    // Initial UI state on page load
+    window.onload = function() {
+        updateUIState('idle');
+        document.getElementById('soapInput').value = "S: The patient complains of a migraine headache with some photosensitivity. O: Patient presents with mild neck stiffness, but no focal neurological deficits. A: Migraine with aura. P: Administer Sumatriptan 50mg PO. Advised to rest in a dark room. Follow-up in one week.";
+    };
+</script>
+</body>
+</html>

@@ -11,34 +11,33 @@ MT002:
   version: "1.0"
 
 140l:
-  requirement: "Must document evaluation and management details for abdominal pain and nausea."
-  required_terms: ["abdominal pain", "nausea", "evaluation", "management"]
-  suggestions: ["Document the patient's abdominal pain and nausea assessment, including management plan."]
+  requirement: "Must document the patient's hemorrhoid diagnosis and the surgical plan."
+  required_terms: ["hemorrhoid", "surgery", "milligan's technique"]
+  suggestions: ["Document the patient's hemorrhoid diagnosis and details of the surgical plan using Milligan's technique."]
   version: "1.0"
 
 140m:
-  requirement: "Must document evaluation and management details for abdominal pain and nausea."
-  required_terms: ["abdominal pain", "nausea", "evaluation", "management"]
-  suggestions: ["Document the patient's abdominal pain and nausea assessment, including management plan."]
+  requirement: "Must document the patient's hemorrhoid diagnosis and rubber band ligation procedure."
+  required_terms: ["hemorrhoid", "rubber band ligation", "procedure details"]
+  suggestions: ["Include documentation of the hemorrhoid diagnosis and the rubber band ligation procedure."]
   version: "1.0"
 
 140q:
-  requirement: "Must document evaluation and management details for abdominal pain and nausea."
-  required_terms: ["abdominal pain", "nausea", "evaluation", "management"]
-  suggestions: ["Document the patient's abdominal pain and nausea assessment, including management plan."]
+  requirement: "Must document diagnosis and surgical details for an anal fistula."
+  required_terms: ["anal fistula", "fistula probe", "surgical plan"]
+  suggestions: ["Include documentation of the anal fistula diagnosis and the surgical or probing plan."]
   version: "1.0"
 
 140n:
-  requirement: "Must document evaluation and management details for abdominal pain and nausea."
-  required_terms: ["abdominal pain", "nausea", "evaluation", "management"]
-  suggestions: ["Document the patient's abdominal pain and nausea assessment, including management plan."]
+  requirement: "Must document diagnosis and removal details for an anal polyp or papilloma."
+  required_terms: ["anal polyp", "papilloma", "removal", "pathology findings"]
+  suggestions: ["Provide details of the anal polyp or papilloma removal, including any pathology findings."]
   version: "1.0"
 
-
 140p:
-  requirement: "Must document evaluation and management details for abdominal pain and nausea."
-  required_terms: ["abdominal pain", "nausea", "evaluation", "management"]
-  suggestions: ["Document the patient's abdominal pain and nausea assessment, including management plan."]
+  requirement: "Must document the assessment and surgical procedure for an anal fissure."
+  required_terms: ["anal fissure", "sphincterotomy", "surgical procedure", "assessment"]
+  suggestions: ["Document the assessment of the anal fissure and details of the surgical procedure with sphincterotomy."]
   version: "1.0"
 
 140r:

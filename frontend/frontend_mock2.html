@@ -57,7 +57,7 @@
 <script>
     let sessionId = null;
     let ws = null;
-    let currentServiceCode = null; // Global variable to store the service code
+    let currentServiceCode = null;
 
     function log(msg) {
         const logDiv = document.getElementById('workflowLog');
@@ -77,17 +77,17 @@
         sessionId = crypto.randomUUID();
         log(`Generated session ID: ${sessionId}`);
 
+        // Step 1: Establish WebSocket connection
+        // This MUST be done first before sending the SOAP note.
         const wsUrl = `ws://${window.location.host}/ws/agentic-workflow/${sessionId}`;
         log(`Attempting to connect WebSocket: ${wsUrl}`);
         ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
             log("✅ WebSocket connection opened.");
-            log("Waiting 500ms for server-side registration...");
-            setTimeout(async () => {
-                log("Sending SOAP request...");
-                await sendSoapRequest(soapText);
-            }, 500);
+            // Step 2: Send the initial SOAP note via a single HTTP POST request.
+            // This happens only once, when the workflow starts.
+            sendSoapRequest(soapText);
         };
 
         ws.onmessage = function(event) {
@@ -106,13 +106,9 @@
                 eventType = msg.event_type;
                 payload = msg.payload;
             } else {
-                if (msg.question && msg.session_id) {
-                    eventType = 'waiting_for_user';
-                    payload = msg;
-                } else {
-                    eventType = 'workflow_step';
-                    payload = msg;
-                }
+                // This handles the case where the payload is the root object, as seen in your logs.
+                eventType = 'waiting_for_user';
+                payload = msg;
             }
 
             log(`🔍 Event type: ${eventType}`);
@@ -122,10 +118,11 @@
                 const container = document.getElementById('answerContainer');
                 container.innerHTML = '';
 
-                // FIX: The backend payload for a 'waiting_for_user' event
-                // contains the question and service code directly in the payload.
-                // We're updating the code to correctly access them.
+                // Extract the missing terms from the question string
                 const questionText = payload.question;
+                const termsMatch = questionText.match(/please provide: (.*)/);
+                const missingTerms = termsMatch ? termsMatch[1].split(', ').map(term => term.trim()) : [];
+
                 currentServiceCode = payload.service_code;
 
                 const label = document.createElement('div');
@@ -133,19 +130,49 @@
                 label.className = "text-lg font-semibold mb-2";
                 container.appendChild(label);
 
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.id = 'userAnswer';
-                input.className = "w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500";
-                input.placeholder = 'Type your answer here';
+                // Create a div to hold multiple input fields
+                const inputsDiv = document.createElement('div');
+                inputsDiv.id = 'answerInputs';
+                container.appendChild(inputsDiv);
+
+                missingTerms.forEach(term => {
+                    const inputGroup = document.createElement('div');
+                    inputGroup.className = 'flex items-center mt-2';
+
+                    const termLabel = document.createElement('span');
+                    termLabel.textContent = `${term}: `;
+                    termLabel.className = 'mr-2 font-medium';
+
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.id = `userAnswer-${term}`;
+                    input.className = "flex-grow p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500";
+                    input.placeholder = `Enter details for ${term}`;
+
+                    inputGroup.appendChild(termLabel);
+                    inputGroup.appendChild(input);
+                    inputsDiv.appendChild(inputGroup);
+                });
 
                 const btn = document.createElement('button');
-                btn.textContent = 'Submit Answer';
-                btn.className = "mt-2 px-4 py-2 bg-green-600 text-white font-bold rounded-full hover:bg-green-700 transition duration-300 shadow-lg";
+                btn.textContent = 'Submit Answers';
+                btn.className = "mt-4 px-4 py-2 bg-green-600 text-white font-bold rounded-full hover:bg-green-700 transition duration-300 shadow-lg";
+
+                // CRITICAL FIX: The event handler for this button
+                // ONLY sends a WebSocket message. It does NOT call fetch().
                 btn.onclick = () => {
-                    const answerText = input.value.trim();
-                    if (!answerText) {
-                        alert("Please type an answer!");
+                    const answers = {};
+                    let allAnswered = true;
+                    missingTerms.forEach(term => {
+                        const input = document.getElementById(`userAnswer-${term}`);
+                        if (input.value.trim() === '') {
+                            allAnswered = false;
+                        }
+                        answers[term] = input.value.trim();
+                    });
+
+                    if (!allAnswered) {
+                        alert("Please provide an answer for all terms!");
                         return;
                     }
 
@@ -155,25 +182,19 @@
                         return;
                     }
 
-                    // FIX: Ensure the payload structure is correct for the backend.
-                    // The 'responses' array should contain an object with the service_code and answers.
+                    // This payload is sent to the backend via the WebSocket.
                     const sendPayload = {
-                        responses: [
-                            {
-                                service_code: currentServiceCode,
-                                answers: { response: answerText }
-                            }
-                        ]
+                        responses: [{
+                            service_code: currentServiceCode,
+                            answers: answers
+                        }]
                     };
 
                     log(`📤 Sending WS answer: ${JSON.stringify(sendPayload)}`);
                     ws.send(JSON.stringify(sendPayload));
-                    container.innerHTML = '';
-                    // No need to reset currentServiceCode here, as it will be updated
-                    // with the next payload from the backend.
+                    container.innerHTML = ''; // Clear the input field for the next question
                 };
 
-                container.appendChild(input);
                 container.appendChild(btn);
             }
         };
@@ -191,6 +212,7 @@
     async function sendSoapRequest(soapText) {
         try {
             log("📤 Sending SOAP request to server...");
+            // This fetch() call is only made ONCE at the start of the workflow.
             const response = await fetch("/ws/submit_soap", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

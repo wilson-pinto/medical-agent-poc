@@ -210,6 +210,7 @@
 #         "total_sessions": len(snap),
 #         "keys": list(snap.keys()),
 #     })
+#app/api.py
 import asyncio
 import uuid
 import os
@@ -377,7 +378,7 @@ async def ws_debug():
 # ----------------------------
 @router.post("/submit_soap")
 async def submit_soap(request: SubmitSOAPRequest):
-    print("\n[DEBUG] /submit_soap endpoint called")
+    print("\n[DEBUG] /submit_soap endpoint called in api.py file")
     session_id = request.session_id or str(uuid.uuid4())
     print(f"[DEBUG] Using session_id: {session_id}")
 
@@ -429,11 +430,21 @@ async def submit_soap(request: SubmitSOAPRequest):
 # ----------------------------
 @router.post("/respond")
 async def respond(session_id: str, request: RespondRequest):
+    print("/respond called 09")
     state = SESSION_STORE.get(session_id)
     if not state:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    # Map user responses
     state.user_responses = {r.service_code: r.answers for r in request.responses}
+
+    # ✅ Validate that submitted codes exist in predicted_service_codes
+    valid_codes = [sc.code for sc in getattr(state, "predicted_service_codes", [])]
+    for code in state.user_responses.keys():
+        if code not in valid_codes:
+            raise HTTPException(status_code=400, detail=f"Invalid service_code: {code}")
+
+    # Resume workflow with live event callback
     await agent_orchestrator.resume_flow(
         session_id=session_id,
         user_responses=state.user_responses,
@@ -451,6 +462,7 @@ async def respond(session_id: str, request: RespondRequest):
 
 @router.get("/state/{session_id}")
 async def get_state(session_id: str):
+    print("/state/session_id is called")
     state = SESSION_STORE.get(session_id)
     if not state:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -460,7 +472,7 @@ async def get_state(session_id: str):
         "question": getattr(state, "question", None),
         "waiting_for_user": getattr(state, "waiting_for_user", False),
         "loop_count": getattr(state, "loop_count", 0),
-        "max_loops": getattr(state, "max_loops", 5),
+        "max_loops": getattr(state, "max_loops", 10),
         "user_responses": getattr(state, "user_responses", {}),
     })
     return JSONResponse(content=state_dict)
