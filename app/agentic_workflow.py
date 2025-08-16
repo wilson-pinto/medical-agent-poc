@@ -5,7 +5,7 @@ from fastapi import WebSocket
 from langgraph.graph import StateGraph, END
 from datetime import datetime
 
-from app.schemas_new.agentic_state import AgenticState
+from app.schemas_new.agentic_state import AgenticState, StageEvent
 from app.core.predict_rerank_validate_nodes import (
     predict_service_codes_node,
     rerank_service_codes_node,
@@ -61,16 +61,13 @@ compiled_workflow = workflow.compile()
 # ----------------------------
 # Runner with WebSocket updates
 # ----------------------------
-# ----------------------------
-# Runner with WebSocket updates
-# ----------------------------
 async def run_workflow(
     initial_state: AgenticState,
     ws_send: Optional[Callable[[Dict[str, Any]], Any]] = None
 ) -> AgenticState:
     """
-    Runs the compiled workflow. Sends reasoning_trail, stage updates, and waiting_for_user events
-    to UI via `ws_send` callable.
+    Runs the compiled workflow. Sends reasoning_trail, stage updates,
+    and waiting_for_user events to UI via `ws_send` callable.
     """
     logger.info(ts(f"[ORCHESTRATOR] Starting run_workflow for session_id={initial_state.session_id}"))
 
@@ -91,18 +88,36 @@ async def run_workflow(
         # Always include reasoning_trail in updates
         updates.setdefault("reasoning_trail", state.reasoning_trail)
 
+        # Append StageEvent for this step
+        stages = getattr(state, "stages", [])
+        stages.append(StageEvent(code=step_name, description=f"Node executed: {step_name}", data=updates))
+        updates["stages"] = stages
+
         try:
+            # Update state
             state = state.update(**updates)
             final_state = state
             logger.info(ts(f"[WORKFLOW] State after {step_name} update: {state.dict()}"))
         except Exception as e:
             logger.error(ts(f"[WORKFLOW] Error updating state at node {step_name}: {e}"))
 
-        # Send node_update and stage_update to frontend via WebSocket
+        # ----------------------------
+        # WebSocket updates per node
+        # ----------------------------
         if ws_send:
             try:
-                await ws_send({"event_type": "node_update", "node": step_name, "payload": updates})
-                await ws_send({"event_type": "stage_update", "stage": step_name})
+                # Node update
+                await ws_send({
+                    "event_type": "node_update",
+                    "node": step_name,
+                    "payload": state.dict()
+                })
+
+                # Stage update
+                await ws_send({
+                    "event_type": "stage_update",
+                    "stage": step_name
+                })
 
                 # If workflow needs user input, send waiting_for_user event
                 if getattr(state, "waiting_for_user", False):
@@ -110,7 +125,8 @@ async def run_workflow(
                         "event_type": "waiting_for_user",
                         "payload": {
                             "question": getattr(state, "question", ""),
-                            "reasoning_trail": state.reasoning_trail
+                            "reasoning_trail": state.reasoning_trail,
+                            "predicted_service_codes": [c.model_dump() for c in getattr(state, "predicted_service_codes", [])]
                         }
                     })
                     # Stop further workflow until user responds
@@ -120,10 +136,13 @@ async def run_workflow(
 
     logger.info(ts("[WORKFLOW] Workflow finished"))
 
-    # Send final workflow finished event
+    # Send final workflow finished event if not waiting for user
     if ws_send and not getattr(state, "waiting_for_user", False):
         try:
-            await ws_send({"event_type": "workflow_finished", "payload": final_state.dict()})
+            await ws_send({
+                "event_type": "workflow_finished",
+                "payload": state.dict()
+            })
         except Exception as e:
             logger.error(ts(f"[WORKFLOW] Failed sending final state to UI: {e}"))
 

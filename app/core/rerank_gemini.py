@@ -38,6 +38,7 @@ def rerank_gemini(soap_text: str, candidates: List[Dict[str, Any]]) -> Dict[str,
     # This scenario would also trigger a fallback to '99215' inside the fallback
     # function itself, but it's good practice to handle it here explicitly.
     if not candidates:
+        print("no candidates.")
         fallback_code, status = get_service_code_fallback(soap_text, candidates)
         return {
             "code": fallback_code,
