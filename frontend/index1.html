@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agentic Workflow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .reasoning-trail { white-space: pre-wrap; background-color: #e5e7eb; border-radius: 0.5rem; padding: 8px; }
+        .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #9ca3af; border-radius: 3px; }
+    </style>
+</head>
+<body class="min-h-screen flex items-start justify-center p-4">
+<div class="flex w-full max-w-7xl gap-6">
+
+    <!-- Left Sidebar: Live Logs -->
+    <div class="w-80 flex-shrink-0 bg-gray-50 border border-gray-300 rounded-xl p-4 shadow-inner sticky top-4 h-[80vh] overflow-y-auto scrollbar-thin">
+        <h3 class="font-bold mb-2 text-gray-700">Reasoning / Agent Logs</h3>
+        <pre id="live-logs" class="text-sm text-gray-700 whitespace-pre-wrap"></pre>
+    </div>
+
+    <!-- Middle Content -->
+    <div class="flex-1 flex flex-col bg-white rounded-xl shadow-lg border border-gray-200 p-6 space-y-6">
+        <h1 class="text-3xl font-bold text-center text-gray-800">Agentic SOAP Note Validator</h1>
+        <div id="status-message" class="text-center text-sm font-semibold text-gray-500">
+            <span id="ws-status">Connecting...</span>
+        </div>
+
+        <!-- SOAP Input -->
+        <div id="input-form" class="space-y-4">
+            <p class="text-gray-600 text-center">Enter SOAP note below to get started:</p>
+            <textarea id="soap-input" rows="6" class="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition" placeholder="A patient presents with internal hemorrhoids..."></textarea>
+            <button id="submit-button" class="w-full py-3 rounded-lg text-white font-semibold bg-gray-400 cursor-not-allowed transition duration-300">Validate SOAP Note</button>
+        </div>
+
+        <!-- Loading / Reasoning Trail -->
+        <div id="loading-screen" class="hidden flex flex-col items-center space-y-3">
+            <div class="animate-spin w-8 h-8 border-4 border-t-blue-500 border-gray-200 rounded-full"></div>
+            <p class="text-lg font-semibold text-blue-600">Agent is working...</p>
+            <pre id="reasoning-trail" class="reasoning-trail w-full max-h-80 overflow-y-auto scrollbar-thin"></pre>
+        </div>
+
+        <!-- Question Input -->
+        <div id="question-form" class="hidden flex flex-col space-y-4">
+            <p id="question-text" class="text-lg font-semibold text-gray-700 text-center"></p>
+            <form id="responses-form" class="space-y-4"></form>
+            <button id="respond-button" class="w-full py-3 rounded-lg text-white font-semibold bg-blue-600 hover:bg-blue-700">Submit Response</button>
+        </div>
+
+        <!-- Final Document -->
+        <div id="final-document" class="hidden flex flex-col space-y-4">
+            <h2 class="text-2xl font-bold text-center text-green-600">Validation Complete!</h2>
+            <div id="service-codes" class="space-y-4"></div>
+            <div class="max-h-80 overflow-y-auto scrollbar-thin">
+                <p class="font-bold text-gray-700 mb-2">Full Reasoning Trail:</p>
+                <pre id="final-reasoning-trail-content" class="reasoning-trail w-full"></pre>
+            </div>
+            <button id="restart-button" class="w-full py-3 rounded-lg text-white font-semibold bg-gray-600 hover:bg-gray-700">Start a New Session</button>
+        </div>
+    </div>
+
+    <!-- Right Sidebar: Workflow Stages -->
+    <div class="w-72 flex-shrink-0 bg-gray-50 border border-gray-300 rounded-xl p-4 shadow-inner sticky top-4 h-[80vh] overflow-y-auto scrollbar-thin">
+        <h3 class="font-bold mb-2 text-gray-700">Workflow Stages</h3>
+        <ul id="stages-list" class="text-sm text-gray-600 space-y-1"></ul>
+    </div>
+
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const soapInput = document.getElementById('soap-input');
+        const submitButton = document.getElementById('submit-button');
+        const wsStatus = document.getElementById('ws-status');
+        const inputForm = document.getElementById('input-form');
+        const loadingScreen = document.getElementById('loading-screen');
+        const reasoningTrailPre = document.getElementById('reasoning-trail');
+        const finalDocument = document.getElementById('final-document');
+        const restartButton = document.getElementById('restart-button');
+        const serviceCodesDiv = document.getElementById('service-codes');
+        const finalReasoningTrailContent = document.getElementById('final-reasoning-trail-content');
+        const questionForm = document.getElementById('question-form');
+        const questionText = document.getElementById('question-text');
+        const responsesForm = document.getElementById('responses-form');
+        const respondButton = document.getElementById('respond-button');
+        const stagesList = document.getElementById('stages-list');
+        const liveLogsPre = document.getElementById('live-logs');
+
+        let sessionId = null;
+        let currentServiceCode = null;
+        let ws = null;
+        const BACKEND_URL = "http://localhost:8000";
+
+        function addStage(stageName) {
+            const li = document.createElement('li');
+            li.textContent = stageName;
+            li.className = "p-1 rounded hover:bg-gray-200";
+            stagesList.appendChild(li);
+            stagesList.scrollTop = stagesList.scrollHeight;
+        }
+
+        function appendLog(message) {
+            const time = new Date().toLocaleTimeString();
+            liveLogsPre.textContent += `[${time}] ${message}\n`;
+            liveLogsPre.scrollTop = liveLogsPre.scrollHeight;
+        }
+
+        function connectWebSocket() {
+            wsStatus.textContent = "Connecting...";
+            wsStatus.className = "text-yellow-600";
+            appendLog("Connecting WebSocket...");
+
+            sessionId = localStorage.getItem('sessionId') || crypto.randomUUID();
+            localStorage.setItem('sessionId', sessionId);
+
+            ws = new WebSocket(`ws://localhost:8000/ws/agentic-workflow/${sessionId}`);
+
+            ws.onopen = () => {
+                wsStatus.textContent = "Connected";
+                wsStatus.className = "text-green-600";
+                submitButton.disabled = false;
+                submitButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                submitButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                appendLog("WebSocket connected.");
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    appendLog(`Received event: ${data.event_type}`);
+                    const payload = data.payload;
+
+                    // Update workflow stages
+                    if (data.node) addStage(data.node);
+                    if (data.event_type === "final_document") addStage("workflow_finished");
+
+                    // Show reasoning trail
+                    if (payload.reasoning_trail) reasoningTrailPre.textContent = payload.reasoning_trail.join('\n');
+
+                    // Waiting for user input
+                    if (data.event_type === "waiting_for_user") {
+                        inputForm.classList.add('hidden');
+                        loadingScreen.classList.add('hidden');
+                        finalDocument.classList.add('hidden');
+                        questionForm.classList.remove('hidden');
+
+                        questionText.textContent = payload.question;
+                        currentServiceCode = (payload.question.match(/service code (\w+)/) || [])[1] || null;
+
+                        responsesForm.innerHTML = '';
+                        const termsString = payload.question.split(': ')[1];
+                        if (termsString) {
+                            termsString.split(', ').forEach(term => {
+                                const termId = term.trim().replace(/\s+/g, '-').toLowerCase();
+                                const div = document.createElement('div');
+                                div.className = "flex flex-col space-y-1";
+                                div.innerHTML = `
+                                <label for="${termId}" class="text-sm font-medium text-gray-700">${term}</label>
+                                <textarea id="${termId}" name="${term}" rows="2" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300"></textarea>
+                            `;
+                                responsesForm.appendChild(div);
+                            });
+                        }
+                    }
+
+                    // Final document display
+                    if (data.event_type === "final_document") {
+                        inputForm.classList.add('hidden');
+                        loadingScreen.classList.add('hidden');
+                        questionForm.classList.add('hidden');
+                        finalDocument.classList.remove('hidden');
+
+                        const html = payload.predicted_service_codes.map(code => {
+                            const severityColor = code.severity === 'fail' ? 'text-red-600' : 'text-green-600';
+                            const severityLabel = code.severity === 'fail' ? 'Failed' : 'Success';
+                            const missingTerms = code.missing_terms.map(term => `
+                            <li><strong>Term:</strong> ${term.term}</li>
+                            <li><strong>Answered:</strong> ${term.answered}</li>
+                            <li><strong>Input:</strong> ${term.user_input || 'N/A'}</li>
+                        `).join('');
+                            const suggestions = code.suggestions.map(s => `<li>${s}</li>`).join('');
+                            return `
+                            <div class="mb-4 p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+                                <h3 class="font-bold text-lg mb-2">Service Code: ${code.code}</h3>
+                                <p class="mb-2"><span class="font-bold">Status:</span> <span class="${severityColor}">${severityLabel}</span></p>
+                                <div class="mb-2">
+                                    <p class="font-semibold">Missing Terms:</p>
+                                    <ul class="list-disc list-inside text-gray-600">${missingTerms}</ul>
+                                </div>
+                                <div class="mb-2">
+                                    <p class="font-semibold">Suggestions:</p>
+                                    <ul class="list-disc list-inside text-gray-600">${suggestions}</ul>
+                                </div>
+                            </div>
+                        `;
+                        }).join('');
+                        serviceCodesDiv.innerHTML = html;
+                        finalReasoningTrailContent.textContent = payload.reasoning_trail.join('\n');
+                    }
+
+                } catch (e) {
+                    appendLog("Failed to parse WebSocket message: " + e);
+                    console.error(e);
+                }
+            };
+
+            ws.onclose = () => {
+                wsStatus.textContent = "Disconnected";
+                wsStatus.className = "text-red-600";
+                submitButton.disabled = true;
+                submitButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                submitButton.classList.add('bg-gray-400', 'cursor-not-allowed');
+                appendLog("WebSocket disconnected.");
+            };
+
+            ws.onerror = (error) => {
+                console.error("[ERROR] WebSocket error:", error);
+                wsStatus.textContent = "Error";
+                wsStatus.className = "text-red-600";
+                appendLog("WebSocket error: " + error);
+            };
+        }
+
+        connectWebSocket();
+
+        // Submit SOAP
+        submitButton.addEventListener('click', async () => {
+            const soapText = soapInput.value.trim();
+            if (!soapText) return alert('Please enter a SOAP note.');
+            inputForm.classList.add('hidden');
+            loadingScreen.classList.remove('hidden');
+            reasoningTrailPre.textContent = '';
+            appendLog("Submitting SOAP note...");
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/submit_soap`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ soap_text: soapText, session_id: sessionId })
+                });
+                const result = await response.json();
+                if (!response.ok) reasoningTrailPre.textContent = `Error: ${result.detail}`;
+                appendLog("SOAP note submitted.");
+            } catch (error) {
+                reasoningTrailPre.textContent = `Error: ${error.message}`;
+                appendLog("Error submitting SOAP note: " + error.message);
+            }
+        });
+
+        // Respond to questions
+        respondButton.addEventListener('click', async () => {
+            const userResponses = {};
+            let allFilled = true;
+            responsesForm.querySelectorAll('textarea').forEach(input => {
+                if (!input.value.trim()) allFilled = false;
+                userResponses[input.name] = input.value.trim();
+            });
+            if (!allFilled) return alert('Please answer all requested terms.');
+            if (!currentServiceCode) return alert('Service code missing. Restart session.');
+            questionForm.classList.add('hidden');
+            loadingScreen.classList.remove('hidden');
+            appendLog("Submitting user responses...");
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/respond?session_id=${sessionId}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ responses: [{ service_code: currentServiceCode, answers: userResponses }] })
+                });
+                const result = await response.json();
+                if (!response.ok) reasoningTrailPre.textContent = `Error: ${result.detail}`;
+                appendLog("User responses submitted.");
+            } catch (error) {
+                reasoningTrailPre.textContent = `Error: ${error.message}`;
+                appendLog("Error submitting responses: " + error.message);
+            }
+        });
+
+        // Restart session
+        restartButton.addEventListener('click', () => {
+            inputForm.classList.remove('hidden');
+            finalDocument.classList.add('hidden');
+            questionForm.classList.add('hidden');
+            soapInput.value = '';
+            sessionId = crypto.randomUUID();
+            localStorage.setItem('sessionId', sessionId);
+            stagesList.innerHTML = '';
+            liveLogsPre.textContent = '';
+            if (ws) ws.close();
+            connectWebSocket();
+        });
+    });
+</script>
+</body>
+</html>
