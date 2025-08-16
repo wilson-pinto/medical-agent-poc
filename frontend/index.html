@@ -103,7 +103,6 @@
         <ul id="stages-list" class="text-sm text-gray-600 space-y-1"></ul>
     </div>
 </div>
-
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const soapInput = document.getElementById('soap-input');
@@ -193,38 +192,43 @@
                             });
                         }
 
-                    } else if (data.event_type === "final_document") {
+                    } else if (data.event_type === "final_document" || data.event_type === "workflow_finished") {
                         inputForm.classList.add('hidden');
                         loadingScreen.classList.add('hidden');
                         questionForm.classList.add('hidden');
                         finalDocument.classList.remove('hidden');
 
-                        const html = payload.predicted_service_codes.map(code => {
-                            const severityColor = code.severity === 'fail' ? 'text-red-600' : 'text-green-600';
-                            const severityLabel = code.severity === 'fail' ? 'Failed' : 'Success';
-                            const missingTerms = code.missing_terms.map(term => `
-                            <li><strong>Term:</strong> ${term.term}</li>
-                            <li><strong>Answered:</strong> ${term.answered}</li>
-                            <li><strong>Input:</strong> ${term.user_input || 'N/A'}</li>
-                        `).join('');
-                            const suggestions = code.suggestions.map(s => `<li>${s}</li>`).join('');
-                            return `
-                            <div class="mb-4 p-4 bg-white rounded-lg shadow-sm border border-gray-200">
-                                <h3 class="font-bold text-lg mb-2">Service Code: ${code.code}</h3>
-                                <p class="mb-2"><span class="font-bold">Status:</span> <span class="${severityColor}">${severityLabel}</span></p>
-                                <div class="mb-2">
-                                    <p class="font-semibold">Missing Terms:</p>
-                                    <ul class="list-disc list-inside text-gray-600">${missingTerms}</ul>
+                        if (payload.predicted_service_codes) {
+                            const html = payload.predicted_service_codes.map(code => {
+                                const severityColor = code.severity === 'fail' ? 'text-red-600' : 'text-green-600';
+                                const severityLabel = code.severity === 'fail' ? 'Failed' : 'Success';
+                                const missingTerms = code.missing_terms.map(term => `
+                                <li><strong>Term:</strong> ${term.term}</li>
+                                <li><strong>Answered:</strong> ${term.answered}</li>
+                                <li><strong>Input:</strong> ${term.user_input || 'N/A'}</li>
+                            `).join('');
+                                const suggestions = code.suggestions.map(s => `<li>${s}</li>`).join('');
+                                return `
+                                <div class="mb-4 p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+                                    <h3 class="font-bold text-lg mb-2">Service Code: ${code.code}</h3>
+                                    <p class="mb-2"><span class="font-bold">Status:</span> <span class="${severityColor}">${severityLabel}</span></p>
+                                    <div class="mb-2">
+                                        <p class="font-semibold">Missing Terms:</p>
+                                        <ul class="list-disc list-inside text-gray-600">${missingTerms}</ul>
+                                    </div>
+                                    <div class="mb-2">
+                                        <p class="font-semibold">Suggestions:</p>
+                                        <ul class="list-disc list-inside text-gray-600">${suggestions}</ul>
+                                    </div>
                                 </div>
-                                <div class="mb-2">
-                                    <p class="font-semibold">Suggestions:</p>
-                                    <ul class="list-disc list-inside text-gray-600">${suggestions}</ul>
-                                </div>
-                            </div>
-                        `;
-                        }).join('');
-                        serviceCodesDiv.innerHTML = html;
-                        finalReasoningTrailContent.textContent = payload.reasoning_trail.join('\n');
+                            `;
+                            }).join('');
+                            serviceCodesDiv.innerHTML = html;
+                        }
+
+                        if (payload.reasoning_trail) {
+                            finalReasoningTrailContent.textContent = payload.reasoning_trail.join('\n');
+                        }
                     }
                 } catch (e) {
                     console.error("[ERROR] Failed to parse WebSocket message:", e);
@@ -309,6 +313,6 @@
         });
     });
 </script>
+
 </body>
 </html>
-F

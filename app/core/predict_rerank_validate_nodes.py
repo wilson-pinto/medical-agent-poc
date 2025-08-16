@@ -23,7 +23,7 @@ def log_state(state: AgenticState, label: str):
     print(f"predicted_service_codes: {[s.code for s in predicted] if predicted else []}")
     print(f"waiting_for_user: {state.waiting_for_user}")
     print(f"question: {state.question}")
-    print(f"loop_count: {state.loop_count}")
+    print(f"loop_count: {getattr(state, 'loop_count', 0)}")
     print(f"reasoning_trail length: {len(state.reasoning_trail)}")
     print("-" * 80)
 
@@ -31,8 +31,17 @@ def log_state(state: AgenticState, label: str):
 # Node functions
 # ----------------------------
 def predict_service_codes_node(state: AgenticState) -> Dict[str, Any]:
-    state.reasoning_trail.append(timestamped("Starting initial service code prediction."))
+    # Skip prediction if codes already exist
+    if state.predicted_service_codes:
+        state.reasoning_trail.append(timestamped("[predict_service_codes_node] Skipped prediction (codes exist)"))
+        log_state(state, "After predict_service_codes_node - skipped")
+        return {
+            "predicted_service_codes": state.predicted_service_codes,
+            "candidates": getattr(state, "candidates", []),
+            "reasoning_trail": state.reasoning_trail
+        }
 
+    state.reasoning_trail.append(timestamped("Starting initial service code prediction."))
     candidates = search_service_codes(state.soap_text)
     if not candidates:
         state.reasoning_trail.append(timestamped("No candidate codes found from initial search."))
@@ -55,16 +64,17 @@ def predict_service_codes_node(state: AgenticState) -> Dict[str, Any]:
 
 
 def rerank_service_codes_node(state: AgenticState) -> Dict[str, Any]:
-    if not state.candidates:
-        state.reasoning_trail.append(timestamped("[rerank_service_codes_node] No candidate codes found."))
-        log_state(state, "After rerank_service_codes_node - no candidates")
-        return {"reranked_code": None, "reasoning_trail": state.reasoning_trail}
+    # Skip rerank if predicted codes already exist
+    if state.reranked_code or not getattr(state, "candidates", None):
+        state.reasoning_trail.append(timestamped("[rerank_service_codes_node] Skipped rerank (no candidates or already reranked)"))
+        log_state(state, "After rerank_service_codes_node - skipped")
+        return {"predicted_service_codes": state.predicted_service_codes, "reranked_code": state.reranked_code, "reasoning_trail": state.reasoning_trail}
 
     try:
         reranked = rerank_gemini(state.soap_text, state.candidates)
     except Exception as e:
         state.reasoning_trail.append(timestamped(f"[rerank_service_codes_node] Gemini failed: {e}"))
-        reranked = None
+        reranked = state.candidates[0] if state.candidates else None
 
     if not reranked or not reranked.get("code"):
         reranked = state.candidates[0]
@@ -79,13 +89,10 @@ def rerank_service_codes_node(state: AgenticState) -> Dict[str, Any]:
     log_state(state, "After rerank_service_codes_node")
     return {"reranked_code": reranked, "predicted_service_codes": state.predicted_service_codes, "reasoning_trail": state.reasoning_trail}
 
-
 def validate_soap_node(state: AgenticState) -> Dict[str, Any]:
-    """
-    Validates SOAP note and updates missing_terms, suggestions, severity, and waiting_for_user.
-    """
     state.reasoning_trail.append(timestamped("Starting validate_soap_node"))
     waiting_for_user = False
+    question = None
 
     # Apply user responses to missing terms
     if state.user_responses and state.predicted_service_codes:
@@ -101,7 +108,7 @@ def validate_soap_node(state: AgenticState) -> Dict[str, Any]:
     if not state.predicted_service_codes or not state.predicted_service_codes[0].code:
         state.reasoning_trail.append(timestamped("[validate_soap_node] No service codes to validate."))
         log_state(state, "After validate_soap_node - no codes")
-        return {"reasoning_trail": state.reasoning_trail, "waiting_for_user": waiting_for_user}
+        return {"reasoning_trail": state.reasoning_trail, "waiting_for_user": waiting_for_user, "question": question}
 
     code_to_validate = state.predicted_service_codes[0].code
     full_soap_text = state.soap_text
@@ -127,36 +134,49 @@ def validate_soap_node(state: AgenticState) -> Dict[str, Any]:
         state.predicted_service_codes[0].missing_terms = new_missing_terms
         state.predicted_service_codes[0].severity = severity
         state.predicted_service_codes[0].suggestions = res.get("suggestions") or []
+
         if severity == "fail":
             waiting_for_user = True
-        state.reasoning_trail.append(timestamped(f"Validation results for {code_to_validate}: severity={severity}"))
+            missing_terms_list = [t.term for t in new_missing_terms if not t.answered]
+            question = f"For service code {code_to_validate}, please provide: {', '.join(missing_terms_list)}"
     else:
         state.predicted_service_codes[0].severity = "pass"
         state.reasoning_trail.append(timestamped(f"No validation rules found or validation passed for code {code_to_validate}"))
 
+    state.question = question
     log_state(state, "After validate_soap_node")
-    return {"predicted_service_codes": state.predicted_service_codes, "reasoning_trail": state.reasoning_trail, "waiting_for_user": waiting_for_user}
+    return {
+        "predicted_service_codes": state.predicted_service_codes,
+        "reasoning_trail": state.reasoning_trail,
+        "waiting_for_user": waiting_for_user,
+        "question": question
+    }
 
 
 def question_generation_node(state: AgenticState) -> Dict[str, Any]:
     state.reasoning_trail.append(timestamped("[question_generation_node] Generating questions if missing terms exist"))
-    question_lines = []
 
-    for sc in state.predicted_service_codes:
-        missing = [m.term for m in sc.missing_terms if not m.answered]
-        if missing:
-            question_lines.append(f"For service code {sc.code}, please provide: {', '.join(missing)}")
-            state.reasoning_trail.append(timestamped(f"Missing terms for {sc.code}: {missing}"))
+    # Use existing question if already set by validate_soap_node
+    if state.question:
+        question = state.question
+        waiting_for_user = True
+        state.reasoning_trail.append(timestamped(f"[question_generation_node] Using existing question from state: '{question}'"))
+    else:
+        question_lines = []
+        for sc in state.predicted_service_codes:
+            missing = [m.term for m in sc.missing_terms if not m.answered]
+            if missing:
+                question_lines.append(f"For service code {sc.code}, please provide: {', '.join(missing)}")
+                state.reasoning_trail.append(timestamped(f"Missing terms for {sc.code}: {missing}"))
 
-    waiting_for_user = bool(question_lines)
-    question = "\n".join(question_lines) if waiting_for_user else ""
+        waiting_for_user = bool(question_lines)
+        question = "\n".join(question_lines) if waiting_for_user else ""
 
     state.reasoning_trail.append(timestamped(f"[question_generation_node] Waiting for user: {waiting_for_user}"))
     state.reasoning_trail.append(timestamped(f"[question_generation_node] Generated question: '{question}'"))
     log_state(state, "After question_generation_node")
 
     return {"waiting_for_user": waiting_for_user, "question": question, "reasoning_trail": state.reasoning_trail}
-
 
 def output_node(state: AgenticState) -> Dict[str, Any]:
     """

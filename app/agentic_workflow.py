@@ -1,3 +1,4 @@
+# agentic_workflow.py
 import asyncio
 from typing import List, Dict, Any, Optional, Callable
 from fastapi import WebSocket
@@ -60,14 +61,25 @@ compiled_workflow = workflow.compile()
 # ----------------------------
 # Runner with WebSocket updates
 # ----------------------------
+# ----------------------------
+# Runner with WebSocket updates
+# ----------------------------
 async def run_workflow(
     initial_state: AgenticState,
     ws_send: Optional[Callable[[Dict[str, Any]], Any]] = None
 ) -> AgenticState:
     """
-    Runs the compiled workflow. Sends reasoning_trail and stage updates to UI via `ws_send` callable.
+    Runs the compiled workflow. Sends reasoning_trail, stage updates, and waiting_for_user events
+    to UI via `ws_send` callable.
     """
     logger.info(ts(f"[ORCHESTRATOR] Starting run_workflow for session_id={initial_state.session_id}"))
+
+    # Track workflow iteration
+    if getattr(initial_state, "loop_count", None) is None:
+        initial_state.loop_count = 0
+    else:
+        initial_state.loop_count += 1
+
     state = initial_state
     final_state = state
 
@@ -76,7 +88,7 @@ async def run_workflow(
         updates = step_output[step_name] or {}
         logger.info(ts(f"[WORKFLOW] Executing node: {step_name}"))
 
-        # Ensure reasoning_trail is always included
+        # Always include reasoning_trail in updates
         updates.setdefault("reasoning_trail", state.reasoning_trail)
 
         try:
@@ -91,13 +103,25 @@ async def run_workflow(
             try:
                 await ws_send({"event_type": "node_update", "node": step_name, "payload": updates})
                 await ws_send({"event_type": "stage_update", "stage": step_name})
+
+                # If workflow needs user input, send waiting_for_user event
+                if getattr(state, "waiting_for_user", False):
+                    await ws_send({
+                        "event_type": "waiting_for_user",
+                        "payload": {
+                            "question": getattr(state, "question", ""),
+                            "reasoning_trail": state.reasoning_trail
+                        }
+                    })
+                    # Stop further workflow until user responds
+                    break
             except Exception as e:
                 logger.error(ts(f"[WORKFLOW] Failed sending update to UI: {e}"))
 
     logger.info(ts("[WORKFLOW] Workflow finished"))
 
     # Send final workflow finished event
-    if ws_send:
+    if ws_send and not getattr(state, "waiting_for_user", False):
         try:
             await ws_send({"event_type": "workflow_finished", "payload": final_state.dict()})
         except Exception as e:
