@@ -1,3 +1,4 @@
+#app/core/pii_pipeline.py
 from presidio_analyzer import AnalyzerEngine
 from presidio_anonymizer import AnonymizerEngine
 from app.utils.pii.norwegian_fnr_recognizer import NorwegianFNRRecognizer

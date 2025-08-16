@@ -28,8 +28,13 @@ class AgenticState(BaseModel):
     reranked_code: Optional[Dict] = None
     question: Optional[str] = None
     user_responses: Optional[Dict[str, Dict[str, str]]] = None
+    pii_present: bool = False
+    detected_pii: Optional[Any] = None
     loop_count: int = 0
     max_loops: int = 10
+    anonymized_note: Optional[str] = None
+    noop: Optional[bool] = None
+
 #     current_service_code: Optional[str] = None
     session_id: str
 

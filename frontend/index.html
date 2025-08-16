@@ -15,11 +15,32 @@
         }
         .container {
             max-width: 900px;
+            position: relative;
         }
         .reasoning-trail {
             white-space: pre-wrap;
             background-color: #e5e7eb;
             border-radius: 0.5rem;
+        }
+        #stages-trail {
+            position: absolute;
+            top: 8px;
+            right: -280px;
+            width: 260px;
+            max-height: 70vh;
+            overflow-y: auto;
+            padding: 12px;
+            background-color: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        #stages-trail::-webkit-scrollbar {
+            width: 6px;
+        }
+        #stages-trail::-webkit-scrollbar-thumb {
+            background-color: #9ca3af;
+            border-radius: 3px;
         }
     </style>
 </head>
@@ -34,7 +55,7 @@
     <div id="input-form" class="space-y-4">
         <p class="text-gray-600 text-center">Enter your SOAP note below to get started. The agent will validate the content and provide a recommendation.</p>
         <textarea id="soap-input" rows="8" class="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300" placeholder="e.g., A patient presents with internal hemorrhoids and the surgical plan is to use Milligan's technique for evaluation and management."></textarea>
-        <button id="submit-button" class="w-full py-3 px-4 rounded-lg text-white font-semibold transition duration-300 bg-gray-400 cursor-not-allowed" disabled>
+        <button id="submit-button" class="w-full py-3 px-4 rounded-lg text-white font-semibold transition duration-300 bg-gray-400 cursor-not-allowed">
             Validate SOAP Note
         </button>
     </div>
@@ -75,6 +96,12 @@
             Start a New Session
         </button>
     </div>
+
+    <!-- Workflow Stages Panel -->
+    <div id="stages-trail">
+        <h3 class="font-bold mb-2 text-gray-700">Workflow Stages</h3>
+        <ul id="stages-list" class="text-sm text-gray-600 space-y-1"></ul>
+    </div>
 </div>
 
 <script>
@@ -93,11 +120,20 @@
         const questionText = document.getElementById('question-text');
         const responsesForm = document.getElementById('responses-form');
         const respondButton = document.getElementById('respond-button');
+        const stagesList = document.getElementById('stages-list');
 
         let sessionId = null;
         let currentServiceCode = null;
         let ws = null;
         const BACKEND_URL = "http://localhost:8000";
+
+        function addStage(stageName) {
+            const li = document.createElement('li');
+            li.textContent = stageName;
+            li.className = "p-1 rounded hover:bg-gray-200";
+            stagesList.appendChild(li);
+            stagesList.scrollTop = stagesList.scrollHeight;
+        }
 
         function connectWebSocket() {
             wsStatus.textContent = "Connecting...";
@@ -109,7 +145,7 @@
             ws = new WebSocket(`ws://localhost:8000/ws/agentic-workflow/${sessionId}`);
 
             ws.onopen = () => {
-                console.log("[SUCCESS] WebSocket connection established. You can now start the workflow.");
+                console.log("[SUCCESS] WebSocket connected.");
                 wsStatus.textContent = "Connected";
                 wsStatus.className = "text-green-600";
                 submitButton.disabled = false;
@@ -118,18 +154,18 @@
             };
 
             ws.onmessage = (event) => {
-                console.log("[EVENT] Raw message received:", event.data);
-
                 try {
                     const data = JSON.parse(event.data);
-                    console.log("[EVENT] Received event type:", data.event_type);
-                    console.log("Payload:", data.payload);
-
                     const payload = data.payload;
 
+                    // Update reasoning trail
                     if (payload.reasoning_trail) {
                         reasoningTrailPre.textContent = payload.reasoning_trail.join('\n');
                     }
+
+                    // Add stage to right panel
+                    if (data.node) addStage(data.node);
+                    if (data.event_type === "final_document") addStage("final_document");
 
                     if (data.event_type === "waiting_for_user") {
                         inputForm.classList.add('hidden');
@@ -139,30 +175,20 @@
 
                         questionText.textContent = payload.question;
 
-                        // **FIX:** Use a regular expression to extract the service code from the question string
                         const match = payload.question.match(/service code (\w+)/);
-                        if (match && match[1]) {
-                            currentServiceCode = match[1];
-                            console.log(`[DEBUG] Extracted service code: ${currentServiceCode}`);
-                        } else {
-                            currentServiceCode = null;
-                            console.error("[ERROR] Could not find service code in the question string.");
-                        }
+                        currentServiceCode = match ? match[1] : null;
 
                         responsesForm.innerHTML = '';
-                        // The question string format is "For service code 140l, please provide: surgery"
                         const termsString = payload.question.split(': ')[1];
                         if (termsString) {
-                            const terms = termsString.split(', ');
-                            terms.forEach(term => {
-                                const trimmedTerm = term.trim();
-                                const termId = trimmedTerm.replace(/\s+/g, '-').toLowerCase();
+                            termsString.split(', ').forEach(term => {
+                                const termId = term.trim().replace(/\s+/g, '-').toLowerCase();
                                 const div = document.createElement('div');
                                 div.className = "flex flex-col space-y-1";
                                 div.innerHTML = `
-                                    <label for="${termId}" class="text-sm font-medium text-gray-700">${trimmedTerm}</label>
-                                    <textarea id="${termId}" name="${trimmedTerm}" rows="2" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300"></textarea>
-                                `;
+                                <label for="${termId}" class="text-sm font-medium text-gray-700">${term}</label>
+                                <textarea id="${termId}" name="${term}" rows="2" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300"></textarea>
+                            `;
                                 responsesForm.appendChild(div);
                             });
                         }
@@ -177,45 +203,41 @@
                             const severityColor = code.severity === 'fail' ? 'text-red-600' : 'text-green-600';
                             const severityLabel = code.severity === 'fail' ? 'Failed' : 'Success';
                             const missingTerms = code.missing_terms.map(term => `
-                                    <li><strong>Term:</strong> ${term.term}</li>
-                                    <li><strong>Answered:</strong> ${term.answered}</li>
-                                    <li><strong>Input:</strong> ${term.user_input || 'N/A'}</li>
-                                `).join('');
+                            <li><strong>Term:</strong> ${term.term}</li>
+                            <li><strong>Answered:</strong> ${term.answered}</li>
+                            <li><strong>Input:</strong> ${term.user_input || 'N/A'}</li>
+                        `).join('');
                             const suggestions = code.suggestions.map(s => `<li>${s}</li>`).join('');
-
                             return `
-                                    <div class="mb-4 p-4 bg-white rounded-lg shadow-sm border border-gray-200">
-                                        <h3 class="font-bold text-lg mb-2">Service Code: ${code.code}</h3>
-                                        <p class="mb-2"><span class="font-bold">Status:</span> <span class="${severityColor}">${severityLabel}</span></p>
-                                        <div class="mb-2">
-                                            <p class="font-semibold">Missing Terms:</p>
-                                            <ul class="list-disc list-inside text-gray-600">${missingTerms}</ul>
-                                        </div>
-                                        <div class="mb-2">
-                                            <p class="font-semibold">Suggestions:</p>
-                                            <ul class="list-disc list-inside text-gray-600">${suggestions}</ul>
-                                        </div>
-                                    </div>
-                                `;
+                            <div class="mb-4 p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+                                <h3 class="font-bold text-lg mb-2">Service Code: ${code.code}</h3>
+                                <p class="mb-2"><span class="font-bold">Status:</span> <span class="${severityColor}">${severityLabel}</span></p>
+                                <div class="mb-2">
+                                    <p class="font-semibold">Missing Terms:</p>
+                                    <ul class="list-disc list-inside text-gray-600">${missingTerms}</ul>
+                                </div>
+                                <div class="mb-2">
+                                    <p class="font-semibold">Suggestions:</p>
+                                    <ul class="list-disc list-inside text-gray-600">${suggestions}</ul>
+                                </div>
+                            </div>
+                        `;
                         }).join('');
-
                         serviceCodesDiv.innerHTML = html;
                         finalReasoningTrailContent.textContent = payload.reasoning_trail.join('\n');
                     }
                 } catch (e) {
-                    console.error("[ERROR] Failed to parse WebSocket message or process payload:", e);
+                    console.error("[ERROR] Failed to parse WebSocket message:", e);
                 }
             };
 
-            ws.onclose = (event) => {
-                console.log("[DEBUG] WebSocket disconnected:", event.code, event.reason);
+            ws.onclose = () => {
                 wsStatus.textContent = "Disconnected";
                 wsStatus.className = "text-red-600";
                 submitButton.disabled = true;
                 submitButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
                 submitButton.classList.add('bg-gray-400', 'cursor-not-allowed');
             };
-
             ws.onerror = (error) => {
                 console.error("[ERROR] WebSocket error:", error);
                 wsStatus.textContent = "Error";
@@ -225,12 +247,10 @@
 
         connectWebSocket();
 
+        // Submit SOAP
         submitButton.addEventListener('click', async () => {
             const soapText = soapInput.value.trim();
-            if (!soapText) {
-                alert('Please enter a SOAP note.');
-                return;
-            }
+            if (!soapText) return alert('Please enter a SOAP note.');
 
             inputForm.classList.add('hidden');
             loadingScreen.classList.remove('hidden');
@@ -239,95 +259,56 @@
             try {
                 const response = await fetch(`${BACKEND_URL}/api/submit_soap`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ soap_text: soapText, session_id: sessionId })
                 });
                 const result = await response.json();
-                if (response.ok) {
-                    console.log("[SUCCESS] Workflow initiated! Status:", result.status);
-                } else {
-                    console.error("[ERROR] HTTP request failed:", result.detail);
-                    reasoningTrailPre.textContent = `Error: ${Array.isArray(result.detail) ? result.detail.map(d => d.msg).join(', ') : (result.detail || 'An unknown error occurred.')}`;
-                }
+                if (!response.ok) reasoningTrailPre.textContent = `Error: ${result.detail}`;
             } catch (error) {
-                console.error("[ERROR] HTTP request failed:", error);
                 reasoningTrailPre.textContent = `Error: ${error.message}`;
             }
         });
 
+        // Respond to questions
         respondButton.addEventListener('click', async () => {
             const userResponses = {};
-            const inputs = responsesForm.querySelectorAll('textarea');
             let allFilled = true;
-            inputs.forEach(input => {
-                const term = input.name;
-                const answer = input.value.trim();
-                if (answer === '') {
-                    allFilled = false;
-                }
-                userResponses[term] = answer;
+            responsesForm.querySelectorAll('textarea').forEach(input => {
+                if (!input.value.trim()) allFilled = false;
+                userResponses[input.name] = input.value.trim();
             });
-
-            if (!allFilled) {
-                alert('Please provide an answer for all requested terms.');
-                return;
-            }
-
-            if (!currentServiceCode) {
-                alert('Error: Service code is missing. Please restart the session.');
-                console.error("Attempted to send a request with a null service_code. Aborting.");
-                return;
-            }
+            if (!allFilled) return alert('Please answer all requested terms.');
+            if (!currentServiceCode) return alert('Service code missing. Restart session.');
 
             questionForm.classList.add('hidden');
             loadingScreen.classList.remove('hidden');
 
-            const requestBody = {
-                responses: [
-                    {
-                        service_code: currentServiceCode,
-                        answers: userResponses
-                    }
-                ]
-            };
-
-            console.log("[DEBUG] Sending payload to /respond:", JSON.stringify(requestBody, null, 2));
-
             try {
                 const response = await fetch(`${BACKEND_URL}/api/respond?session_id=${sessionId}`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(requestBody)
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ responses: [{ service_code: currentServiceCode, answers: userResponses }] })
                 });
                 const result = await response.json();
-                if (response.ok) {
-                    console.log("[SUCCESS] Workflow resumed! Status:", result.status);
-                } else {
-                    console.error("[ERROR] HTTP request failed:", result.detail);
-                    reasoningTrailPre.textContent = `Error: ${Array.isArray(result.detail) ? result.detail.map(d => d.msg).join(', ') : (result.detail || 'An unknown error occurred.')}`;
-                }
+                if (!response.ok) reasoningTrailPre.textContent = `Error: ${result.detail}`;
             } catch (error) {
-                console.error("[ERROR] HTTP request failed:", error);
                 reasoningTrailPre.textContent = `Error: ${error.message}`;
             }
         });
 
+        // Restart session
         restartButton.addEventListener('click', () => {
             inputForm.classList.remove('hidden');
             finalDocument.classList.add('hidden');
             soapInput.value = '';
             sessionId = crypto.randomUUID();
             localStorage.setItem('sessionId', sessionId);
-            if (ws) {
-                ws.close();
-            }
+            stagesList.innerHTML = '';
+            if (ws) ws.close();
             connectWebSocket();
         });
     });
 </script>
 </body>
 </html>
+F

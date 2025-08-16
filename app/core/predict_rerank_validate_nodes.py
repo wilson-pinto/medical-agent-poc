@@ -12,6 +12,7 @@ from app.core.validate_note_requirements.engine import validate_soap_against_rul
 # ----------------------------
 def timestamped(msg: str) -> str:
     """Helper to add a timestamp to log messages."""
+    print(">>>> inside decorator")
     return f"[{datetime.now().strftime('%H:%M:%S')}] {msg}"
 
 def log_state(state: AgenticState, label: str):
@@ -215,6 +216,7 @@ logger = get_logger(__name__)
 def question_generation_node(state: AgenticState) -> Dict[str, Any]:
     """
     Generates a question for the user if there are missing terms that haven't been answered.
+    Returns an empty string for 'question' when no user input is required.
     """
     state.reasoning_trail.append(timestamped("[question_generation_node] Starting question generation."))
     logger.info(f"[question_generation_node] State predicted_service_codes: {state.predicted_service_codes}")
@@ -236,7 +238,7 @@ def question_generation_node(state: AgenticState) -> Dict[str, Any]:
     logger.info(f"[question_generation_node] Final question lines list: {question_lines}")
 
     waiting_for_user = bool(question_lines)
-    question = "\n".join(question_lines) if waiting_for_user else None
+    question = "\n".join(question_lines) if waiting_for_user else ""
 
     state.reasoning_trail.append(timestamped(f"[question_generation_node] Waiting for user: {waiting_for_user}"))
     state.reasoning_trail.append(timestamped(f"[question_generation_node] Generated question: '{question}'"))
@@ -248,9 +250,15 @@ def question_generation_node(state: AgenticState) -> Dict[str, Any]:
         "reasoning_trail": state.reasoning_trail
     }
 
-def output_node(state: AgenticState):
-    """
-    Final node to produce the output.
-    """
+
+def output_node(state: AgenticState) -> Dict[str, Any]:
     log_state(state, "At output_node")
-    return state
+    print(">>>> output_node will return a noop update")
+    # return a NON-empty dict so LangGraph doesn’t convert to None
+    return {"_noop": True}
+
+
+
+
+
+
