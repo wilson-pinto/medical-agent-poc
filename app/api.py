@@ -106,26 +106,28 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 # ----------------------------
 # Submit SOAP endpoint
 # ----------------------------
+# ----------------------------
+# Submit SOAP endpoint (updated)
+# ----------------------------
 @router.post("/submit_soap")
 async def submit_soap(request: SubmitSOAPRequest):
     session_id = request.session_id or str(uuid.uuid4())
     print(f"\n[DEBUG] /submit_soap endpoint called for session {session_id}")
 
-    # No need to wait for a backend event. The frontend already confirmed the WebSocket is open.
-    # The `send_event` call will handle any connection issues gracefully.
+    # Define async ws_send wrapper
+    async def ws_send(payload: dict):
+        await manager.send_event(payload.get("event_type", "unknown"), payload.get("payload", {}), session_id=session_id)
+
+    # Start workflow with ws_send
     try:
         final_state = await agent_orchestrator.start_flow(
             soap_text=request.soap_text,
-            session_id=session_id
+            session_id=session_id,
+            ws_send=ws_send  # pass async ws_send to orchestrator
         )
     except Exception as e:
         print(f"[ERROR] Exception while starting flow: {e}")
         raise HTTPException(status_code=500, detail=f"Error starting session: {e}")
-
-    if final_state.waiting_for_user:
-        await manager.send_event("waiting_for_user", final_state.dict(), session_id)
-    else:
-        await manager.send_event("final_document", final_state.dict(), session_id)
 
     return JSONResponse(content={
         "session_id": session_id,
@@ -137,33 +139,36 @@ async def submit_soap(request: SubmitSOAPRequest):
 # ----------------------------
 # Respond endpoint
 # ----------------------------
+# ----------------------------
+# Respond endpoint (updated)
+# ----------------------------
 @router.post("/respond")
 async def respond(session_id: str, request: RespondRequest):
     print(f"\n[DEBUG] /respond endpoint called for session {session_id}")
 
-    # Correctly map the incoming list of ServiceResponse objects to a nested dictionary
-    # that the orchestrator expects.
+    # Map user responses
     user_responses = {r.service_code: r.answers for r in request.responses}
+
+    # Async ws_send wrapper
+    async def ws_send(payload: dict):
+        await manager.send_event(payload.get("event_type", "unknown"), payload.get("payload", {}), session_id=session_id)
 
     try:
         final_state = await agent_orchestrator.resume_flow(
             session_id=session_id,
-            user_responses=user_responses
+            user_responses=user_responses,
+            ws_send=ws_send  # pass async ws_send to orchestrator
         )
     except Exception as e:
         print(f"[ERROR] Exception while resuming flow: {e}")
         raise HTTPException(status_code=500, detail=f"Error resuming session: {e}")
-
-    if final_state.waiting_for_user:
-        await manager.send_event("waiting_for_user", final_state.dict(), session_id)
-    else:
-        await manager.send_event("final_document", final_state.dict(), session_id)
 
     return JSONResponse(content={
         "session_id": session_id,
         "status": "resumed",
         "message": "Workflow resumed. Check WebSocket for updates."
     })
+
 
 
 @router.get("/state/{session_id}")
@@ -184,4 +189,95 @@ async def ws_debug():
         "total_sessions": len(snap),
         "keys": list(snap.keys()),
         "active_connections_dict": {k: f"{len(v)} connections" for k, v in manager.active_connections.items()}
+    })
+
+# ----------------------------
+# Clear session endpoint
+# ----------------------------
+@router.delete("/clear_session/{session_id}")
+async def clear_session(session_id: str):
+    print(f"\n[DEBUG] /clear_session/{session_id} called")
+
+    redis_deleted = False
+    redis_key = f"session_state:{session_id}"  # add correct prefix
+
+    # Remove from Redis
+    if redis_client:
+        try:
+            deleted_count = redis_client.delete(redis_key)
+            redis_deleted = deleted_count > 0
+        except Exception as e:
+            print(f"[ERROR] Failed to delete session from Redis: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to clear session: {e}")
+
+    # Remove active WebSocket connections if any
+    connections_cleared = False
+    async with manager._lock:
+        if session_id in manager.active_connections:
+            conns = manager.active_connections.pop(session_id, [])
+            for ws in conns:
+                try:
+                    await ws.close()
+                except Exception as e:
+                    print(f"[WARNING] Failed to close websocket: {e}")
+        connections_cleared = session_id not in manager.active_connections
+
+    return JSONResponse(content={
+        "session_id": session_id,
+        "redis_deleted": redis_deleted,
+        "connections_cleared": connections_cleared,
+        "message": f"Session {session_id} cleared successfully."
+    })
+
+
+@router.get("/_redis/keys")
+async def list_redis_keys():
+    if redis_client is None:
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Redis client not initialized."}
+        )
+
+    try:
+        keys = redis_client.keys("*")
+        # decode bytes to str
+        keys_str = [k.decode("utf-8") for k in keys]
+        return JSONResponse(content={
+            "total_keys": len(keys_str),
+            "keys": keys_str
+        })
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+@router.delete("/clear_all_sessions")
+async def clear_all_sessions():
+    print("\n[DEBUG] /clear_all_sessions called")
+
+    redis_deleted_count = 0
+    if redis_client:
+        try:
+            # Scan for all session keys with the prefix
+            cursor = 0
+            while True:
+                cursor, keys = redis_client.scan(cursor=cursor, match="session_state:*", count=100)
+                if keys:
+                    redis_deleted_count += redis_client.delete(*keys)
+                if cursor == 0:
+                    break
+        except Exception as e:
+            print(f"[ERROR] Failed to delete sessions from Redis: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to clear sessions: {e}")
+
+    # Clear all active WebSocket connections
+    async with manager._lock:
+        total_connections = sum(len(conns) for conns in manager.active_connections.values())
+        manager.active_connections.clear()
+
+    return JSONResponse(content={
+        "redis_deleted_count": redis_deleted_count,
+        "connections_cleared_count": total_connections,
+        "message": f"All sessions cleared successfully."
     })
