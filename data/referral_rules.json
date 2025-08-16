@@ -1,0 +1,14 @@
+[
+  {
+    "id": "R001",
+    "keywords": ["fracture", "broken", "swelling"],
+    "description": "Refer to orthopedic department",
+    "referral_required": true
+  },
+  {
+    "id": "R002",
+    "keywords": ["minor cut", "abrasion"],
+    "description": "No referral required",
+    "referral_required": false
+  }
+]

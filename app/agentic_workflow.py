@@ -1,9 +1,13 @@
 # agentic_workflow.py
 import asyncio
+import base64
 from typing import List, Dict, Any, Optional, Callable
 from fastapi import WebSocket
 from langgraph.graph import StateGraph, END
 from datetime import datetime
+from app.core.referral_nodes import execute_referral_node, check_referral_required_node
+from app.core.patient_summary_node import patient_summary_node
+from app.core.patient_summary_pdf_node import patient_summary_pdf_node
 
 from app.schemas_new.agentic_state import AgenticState, StageEvent
 from app.core.predict_rerank_validate_nodes import (
@@ -34,8 +38,12 @@ workflow.add_node("anonymize_pii", pii_nodes.anonymize_pii_node)
 workflow.add_node("predict_service_codes", predict_service_codes_node)
 workflow.add_node("rerank_service_codes", rerank_service_codes_node)
 workflow.add_node("validate_soap", validate_soap_node)
+workflow.add_node("check_referral_required", check_referral_required_node)
+workflow.add_node("execute_referral", execute_referral_node)
 workflow.add_node("question_generation", question_generation_node)
 workflow.add_node("output", output_node)
+workflow.add_node("patient_summary", patient_summary_node)
+workflow.add_node("patient_summary_pdf", patient_summary_pdf_node)
 
 workflow.set_entry_point("pii_detection")
 
@@ -48,13 +56,24 @@ workflow.add_conditional_edges(
 workflow.add_edge("anonymize_pii", "predict_service_codes")
 workflow.add_edge("predict_service_codes", "rerank_service_codes")
 workflow.add_edge("rerank_service_codes", "validate_soap")
-workflow.add_edge("validate_soap", "question_generation")
+workflow.add_edge("validate_soap", "check_referral_required")
+
+# Conditional transition from check_referral_required to execute_referral or question_generation
+workflow.add_conditional_edges(
+    "check_referral_required",
+    lambda state: "execute_referral" if getattr(state, "requires_referral_check", False) else "question_generation",
+    {"execute_referral": "execute_referral", "question_generation": "question_generation"}
+)
+
 workflow.add_conditional_edges(
     "question_generation",
     lambda state: "END" if state.waiting_for_user else "output",
     {"END": END, "output": "output"}
 )
-workflow.add_edge("output", END)
+
+workflow.add_edge("output", "patient_summary")
+workflow.add_edge("patient_summary", "patient_summary_pdf")
+workflow.add_edge("patient_summary_pdf", END)
 
 compiled_workflow = workflow.compile()
 
@@ -131,6 +150,21 @@ async def run_workflow(
                     })
                     # Stop further workflow until user responds
                     break
+
+                # ----------------------------
+                # Auto-download PDF for patient_summary_pdf
+                # ----------------------------
+                if step_name == "patient_summary_pdf":
+                    pdf_bytes = updates.get("patient_summary_pdf", b"")
+                    if pdf_bytes:
+                        await ws_send({
+                            "event_type": "download_pdf",
+                            "payload": {
+                                "filename": f"patient_summary_{state.session_id}.pdf",
+                                "pdf_bytes_base64": base64.b64encode(pdf_bytes).decode("utf-8")
+                            }
+                        })
+
             except Exception as e:
                 logger.error(ts(f"[WORKFLOW] Failed sending update to UI: {e}"))
 

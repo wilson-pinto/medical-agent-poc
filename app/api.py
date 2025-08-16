@@ -4,6 +4,9 @@ import os
 import json
 from typing import Dict, List, Optional, Any
 
+from fastapi.responses import Response
+from app.core.patient_summary_pdf_node import patient_summary_pdf_node
+from app.schemas_new.agentic_state import AgenticState
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import JSONResponse
 import redis
@@ -281,3 +284,39 @@ async def clear_all_sessions():
         "connections_cleared_count": total_connections,
         "message": f"All sessions cleared successfully."
     })
+
+# ----------------------------
+# Download Patient Summary PDF
+# ----------------------------
+
+
+@router.get("/download_patient_summary/{session_id}")
+async def download_patient_summary(session_id: str):
+    """
+    Generates or fetches the patient-friendly summary PDF for the given session
+    and returns it as a downloadable file.
+    """
+    # Fetch the workflow state from Redis (or wherever you store it)
+    if not redis_client:
+        raise HTTPException(status_code=500, detail="Redis client not initialized.")
+
+    state_data = redis_client.get(f"session_state:{session_id}")
+    if not state_data:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Recreate AgenticState object
+    state_dict = json.loads(state_data)
+    state = AgenticState(**state_dict)
+
+    # Generate PDF using your node (fallback to simple text if Gemeni fails inside node)
+    updates = await patient_summary_pdf_node(state)
+    pdf_bytes = updates.get("patient_summary_pdf", b"")
+
+    if not pdf_bytes:
+        raise HTTPException(status_code=500, detail="Failed to generate patient summary PDF")
+
+    headers = {
+        "Content-Disposition": f"attachment; filename=patient_summary_{session_id}.pdf"
+    }
+
+    return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)

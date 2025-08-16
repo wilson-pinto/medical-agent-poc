@@ -38,6 +38,10 @@ class AgenticState(BaseModel):
     noop: Optional[bool] = None
     stages: List[StageEvent] = Field(default_factory=list)  # <-- new field
     session_id: str
+    requires_referral_check: bool = False
+    referral_required: Optional[bool] = None
+    referral_rule_applied: Optional[str] = None
+
 
     def update(self, **kwargs: Any) -> 'AgenticState':
         """
