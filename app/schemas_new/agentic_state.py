@@ -30,7 +30,7 @@ class AgenticState(BaseModel):
     user_responses: Optional[Dict[str, Dict[str, str]]] = None
     loop_count: int = 0
     max_loops: int = 10
-    current_service_code: Optional[str] = None
+#     current_service_code: Optional[str] = None
     session_id: str
 
     def update(self, **kwargs: Any) -> 'AgenticState':
@@ -46,9 +46,6 @@ class AgenticState(BaseModel):
             A new AgenticState instance with the updated values.
         """
         return self.model_copy(update=kwargs)
-
-
-
 
 class ServiceResponse(BaseModel):
     service_code: str
