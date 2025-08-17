@@ -30,8 +30,9 @@ agent_orchestrator: Optional[HelFoAgentOrchestrator] = None
 app.add_middleware(
     CORSMiddleware,
     # Allow local frontend ports for development
-    allow_origins=["http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:8000", "http://127.0.0.1:8000"],
-    allow_credentials=True,
+#     allow_origins=["http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:8000", "http://127.0.0.1:8000"],
+    allow_origins = ["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"]
 )

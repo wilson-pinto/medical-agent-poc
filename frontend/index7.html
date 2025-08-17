@@ -2,446 +2,420 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agentic AI Workflow</title>
+    <title>Agentic Healthcare AI Workflow</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
-            min-height: 100vh;
-        }
-        .stage-node { transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
-        .reasoning-bubble { background: rgba(30,41,59,0.95); border: 1px solid rgba(99,102,241,0.3); }
-        .glassmorphism { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); }
-        .neon-border { box-shadow: 0 0 5px rgba(99,102,241,0.5),0 0 10px rgba(99,102,241,0.3),0 0 15px rgba(99,102,241,0.2); }
-        .stage-connector { height:3px; border-radius:2px; overflow:hidden; background:linear-gradient(90deg,#4f46e5,#7c3aed,#ec4899);}
-        .stage-connector.active::before { content:''; position:absolute; top:0; left:-100%; width:100%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.8),transparent); animation: flow 2s ease-in-out infinite; }
-        @keyframes flow {0%{left:-100%;}100%{left:100%;}}
+        .stage-node { transition: all .4s cubic-bezier(.4,0,.2,1); }
     </style>
 </head>
-<body class="min-h-screen neural-pattern">
-<div class="container mx-auto px-4 py-8 max-w-7xl">
-    <div class="text-center mb-8">
-        <h1 class="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">🧠 Agentic AI Workflow</h1>
-        <p class="text-slate-300 text-lg">Intelligent SOAP Note Analysis & Validation</p>
-        <div id="status-message" class="mt-4">
-            <span id="ws-status" class="px-4 py-2 rounded-full text-sm font-semibold text-yellow-400 bg-yellow-400/10 border border-yellow-400/30">Connecting...</span>
-        </div>
-    </div>
+<body class="bg-[#0f0f23] text-white antialiased">
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Left: Input & AI Processing -->
-        <div class="lg:col-span-2 space-y-6">
-            <!-- Input Form -->
-            <div id="input-form" class="glassmorphism rounded-2xl p-6">
-                <h2 class="text-xl font-semibold text-white mb-4">📝 Enter SOAP Note</h2>
-                <textarea id="soap-input" rows="6" class="w-full p-4 bg-slate-800/80 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-300" placeholder="Enter your SOAP note here..."></textarea>
-                <button id="submit-button" class="w-full mt-4 py-3 px-6 rounded-xl font-semibold transition duration-300 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white neon-border" disabled>🚀 Analyze with AI</button>
+<div class="container mx-auto p-6">
+    <h1 class="text-4xl font-bold text-center mb-6 bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
+        Agentic Healthcare AI
+    </h1>
+    <div class="flex gap-8">
+        <!-- LEFT -->
+        <div class="flex-1 space-y-6">
+            <div id="input-form" class="bg-white/5 p-6 rounded-xl">
+                <h2 class="font-semibold mb-2">📝 Enter SOAP Note</h2>
+                <textarea id="soap-input" rows="6" class="w-full p-3 bg-slate-900 border border-slate-800 rounded text-sm"
+                          placeholder="Enter SOAP note here..."></textarea>
+                <button id="submit-button" disabled class="w-full mt-3 p-3 rounded bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90">
+                    Analyse
+                </button>
             </div>
-
-            <!-- AI Thinking Panel -->
-            <div id="ai-thinking" class="hidden glassmorphism rounded-2xl p-6">
-                <div class="flex items-center mb-4">
-                    <div class="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mr-3 animate-spin">🧠</div>
-                    <h2 class="text-xl font-semibold text-white">AI Agent is Processing<span class="thinking-dots"></span></h2>
-                </div>
-                <div class="reasoning-bubble rounded-xl p-4 max-h-64 overflow-y-auto">
-                    <div class="flex items-center mb-2"><span class="text-purple-400 text-sm font-semibold">💭 Agent Thoughts</span></div>
-                    <pre id="reasoning-trail" class="text-slate-300 text-sm whitespace-pre-wrap"></pre>
-                </div>
+            <div id="ai-thinking" class="hidden p-6 bg-white/5 rounded-xl">
+                <p>🤖 Processing...</p>
+                <pre id="reasoning-trail" class="text-xs whitespace-pre-wrap"></pre>
             </div>
-
-            <!-- Question Form -->
-            <div id="question-form" class="hidden glassmorphism rounded-2xl p-6">
-                <div class="flex items-center mb-4">
-                    <div class="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center mr-3">❓</div>
-                    <h2 class="text-xl font-semibold text-white">Agent Needs More Information</h2>
-                </div>
-                <p id="question-text" class="text-slate-300 mb-4 p-4 bg-slate-800/30 rounded-lg border-l-4 border-orange-500"></p>
-                <form id="responses-form" class="space-y-4"></form>
-                <button id="respond-button" class="w-full mt-4 py-3 px-6 rounded-xl font-semibold transition duration-300 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white neon-border">📤 Submit Response to Agent</button>
+            <div id="question-form" class="hidden p-6 bg-white/5 rounded-xl space-y-2">
+                <p id="question-text" class="font-medium"></p>
+                <form id="responses-form"></form>
+                <button id="respond-button" class="w-full p-2 bg-orange-500 rounded">Submit</button>
             </div>
-
-            <!-- Final Document -->
-            <div id="final-document" class="hidden glassmorphism rounded-2xl p-6">
-                <div class="flex items-center mb-4">
-                    <div class="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mr-3">✅</div>
-                    <h2 class="text-2xl font-bold text-white">Analysis Complete!</h2>
-                </div>
-                <div id="service-codes" class="mb-6"></div>
-                <div class="reasoning-bubble rounded-xl p-4 max-h-96 overflow-y-auto">
-                    <div class="flex items-center mb-2"><span class="text-green-400 text-sm font-semibold">📋 Complete Reasoning Trail</span></div>
-                    <pre id="final-reasoning-trail-content" class="text-slate-300 text-sm whitespace-pre-wrap"></pre>
-                </div>
-                <button id="restart-button" class="w-full mt-4 py-3 px-6 rounded-xl font-semibold transition duration-300 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white">🔄 Start New Analysis</button>
+            <div id="final-document" class="hidden p-6 bg-white/5 rounded-xl">
+                <h3 class="font-bold text-lg mb-2">✅ Complete</h3>
+                <div id="service-codes"></div>
+                <pre id="final-reasoning-trail-content" class="text-xs whitespace-pre-wrap mt-4"></pre>
+                <button id="restart-button" class="mt-4 p-2 rounded bg-slate-700">Start New</button>
             </div>
         </div>
 
-        <!-- Right: Workflow Panel -->
-        <div class="lg:col-span-1">
-            <div class="glassmorphism rounded-2xl p-6 sticky top-8 max-h-[calc(100vh-10rem)] overflow-y-auto">
-                <div class="flex items-center mb-6">
-                    <div class="w-8 h-8 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full flex items-center justify-center mr-3">🔄</div>
-                    <h3 class="text-xl font-bold text-white">Workflow Pipeline</h3>
-                </div>
-                <div id="workflow-stages" class="space-y-3">
-                    <div class="text-center text-slate-400 py-8">Agent is waiting for input...</div>
-                </div>
+        <!-- RIGHT -->
+        <div class="w-[320px] max-h-[calc(100vh-4rem)] overflow-y-auto">
+            <div class="bg-white/5 p-4 rounded-xl space-y-3">
+                <h3 class="font-semibold mb-2">📊 Workflow Timeline</h3>
+                <div id="workflow-stages" class="space-y-4 text-xs"></div>
             </div>
         </div>
     </div>
 </div>
+
+<!--<script>-->
+<!--    document.addEventListener('DOMContentLoaded', () => {-->
+<!--        const soapInput     = document.getElementById('soap-input');-->
+<!--        const submitButton  = document.getElementById('submit-button');-->
+<!--        const inputForm     = document.getElementById('input-form');-->
+<!--        const aiThinking    = document.getElementById('ai-thinking');-->
+<!--        const reasoningTrail= document.getElementById('reasoning-trail');-->
+<!--        const questionForm  = document.getElementById('question-form');-->
+<!--        const questionText  = document.getElementById('question-text');-->
+<!--        const responsesForm = document.getElementById('responses-form');-->
+<!--        const respondButton = document.getElementById('respond-button');-->
+<!--        const finalDocument = document.getElementById('final-document');-->
+<!--        const serviceCodesDiv = document.getElementById('service-codes');-->
+<!--        const finalReasoningTrailContent = document.getElementById('final-reasoning-trail-content');-->
+<!--        const restartButton = document.getElementById('restart-button');-->
+<!--        const workflowStages= document.getElementById('workflow-stages');-->
+
+<!--        const BACKEND_URL   = "http://localhost:8000";-->
+
+<!--        let sessionId = null;-->
+<!--        let ws        = null;-->
+<!--        let allStages = [];-->
+<!--        let currentServiceCode = null;-->
+
+<!--        const stageConfig = {-->
+<!--            'pii_detection':        { name: 'PII Detection',        icon: '🔍'},-->
+<!--            'anonymize_pii':        { name: 'Anonymization',        icon: '🛡️'},-->
+<!--            'predict_service_codes':{ name: 'Prediction',           icon: '🎯'},-->
+<!--            'rerank_service_codes': { name: 'Rerank',               icon: '📊'},-->
+<!--            'validate_soap':        { name: 'Validation',           icon: '✅'},-->
+<!--            'check_referral_required': { name: 'Check Referral',    icon: '🏥'},-->
+<!--            'execute_referral':     { name: 'Referral',             icon: '📨'},-->
+<!--            'question_generation':  { name: 'Clarifications',       icon: '❓'},-->
+<!--            'output':               { name: 'Output',               icon: '📄'},-->
+<!--            'patient_summary':      { name: 'Summary',              icon: '🧾'},-->
+<!--            'patient_summary_pdf':  { name: 'PDF',                  icon: '📥'},-->
+<!--            'execute_gmail_draft':  { name: 'Email Draft',          icon: '✉️'}-->
+<!--        };-->
+<!--        const stageOrder = Object.keys(stageConfig);-->
+
+<!--        // Render timeline-->
+<!--        function renderStages(){-->
+<!--            workflowStages.innerHTML = '';-->
+<!--            if(!allStages.length){-->
+<!--                workflowStages.innerHTML = '<div class="text-slate-500 text-center py-6">Waiting...</div>';-->
+<!--                return;-->
+<!--            }-->
+<!--            allStages.forEach((s, idx)=>{-->
+<!--                const cfg = stageConfig[s.name];-->
+<!--                const node = document.createElement('div');-->
+<!--                node.className = 'stage-node flex space-x-2 p-2 rounded ' + (s.status==='completed'?'bg-green-600/20':s.status==='current'?'bg-purple-600/20':'bg-slate-700/20');-->
+<!--                node.innerHTML = `<span>${cfg.icon}</span><div class="flex-1 text-xs">${cfg.name}</div><span>${s.status==='current'?'⏳':s.status==='completed'?'✅':''}</span>`;-->
+<!--                workflowStages.appendChild(node);-->
+<!--                if(idx < allStages.length-1){-->
+<!--                    const bar = document.createElement('div');-->
+<!--                    bar.className='h-[3px] rounded-full my-1 '+ (allStages[idx+1].status!=='pending'?'bg-gradient-to-r from-purple-600 to-blue-600':'bg-slate-700/40');-->
+<!--                    workflowStages.appendChild(bar);-->
+<!--                }-->
+<!--            });-->
+<!--        }-->
+
+<!--        // Update stage timeline-->
+<!--        function updateStagesFromState(stageArr){-->
+<!--            const executed = stageArr.map(x=>x.code);-->
+<!--            const last = executed[executed.length-1];-->
+<!--            stageArr.forEach(s=>{-->
+<!--                if(!allStages.some(x=>x.name===s.code)){-->
+<!--                    const idx = stageOrder.indexOf(s.code);-->
+<!--                    allStages.splice(idx,0,{name:s.code, status:'pending'});-->
+<!--                }-->
+<!--            });-->
+<!--            allStages.forEach(n=>{-->
+<!--                n.status = executed.includes(n.name) ? (n.name===last?'current':'completed') : 'pending';-->
+<!--            });-->
+<!--            renderStages();-->
+<!--        }-->
+
+<!--        function updateReasoningTrail(trl){-->
+<!--            reasoningTrail.textContent = trl.slice(-10).join("\n");-->
+<!--            reasoningTrail.scrollTop = reasoningTrail.scrollHeight;-->
+<!--        }-->
+
+<!--        function connectWebSocket(){-->
+<!--            sessionId = crypto.randomUUID();-->
+<!--            ws = new WebSocket(`ws://localhost:8000/ws/agentic-workflow/${sessionId}`);-->
+<!--            ws.onopen = ()=> submitButton.disabled = false;-->
+
+<!--            ws.onmessage = (e)=>{-->
+<!--                const msg = JSON.parse(e.data);-->
+<!--                const p   = msg.payload || {};-->
+<!--                if(p.stages) updateStagesFromState(p.stages);-->
+<!--                if(p.reasoning_trail) updateReasoningTrail(p.reasoning_trail);-->
+
+<!--                if(msg.event_type==='waiting_for_user') showQuestionForm(p);-->
+<!--                if(msg.event_type==='pdf_ready') downloadPDF(p.filename,p.pdf_base64);-->
+<!--                if(msg.event_type==='gmail_draft_created') alert('Gmail draft created');-->
+<!--                if(msg.event_type==='workflow_finished') showFinal(p);-->
+<!--            };-->
+<!--        }-->
+
+<!--        function showQuestionForm(payload){-->
+<!--            aiThinking.classList.add('hidden');-->
+<!--            questionForm.classList.remove('hidden');-->
+<!--            currentServiceCode = payload.predicted_service_codes?.[0]?.code || null;-->
+<!--            questionText.textContent = payload.question || '';-->
+<!--            responsesForm.innerHTML='';-->
+<!--            (payload.predicted_service_codes?.[0]?.missing_terms||[]).forEach(m=>{-->
+<!--                if(!m.answered){-->
+<!--                    const id = m.term.toLowerCase().replace(/\s+/g,'-');-->
+<!--                    responsesForm.insertAdjacentHTML('beforeend',`-->
+<!--                    <label class="block mt-2">${m.term}</label>-->
+<!--                    <textarea id="${id}" name="${m.term}" class="w-full p-2 bg-slate-800 rounded"></textarea>-->
+<!--                `);-->
+<!--                }-->
+<!--            });-->
+<!--        }-->
+
+<!--        function showFinal(payload){-->
+<!--            aiThinking.classList.add('hidden');-->
+<!--            questionForm.classList.add('hidden');-->
+<!--            finalDocument.classList.remove('hidden');-->
+<!--            serviceCodesDiv.innerHTML = payload.predicted_service_codes.map(c=>`-->
+<!--            <div class="p-4 bg-slate-800 rounded mb-2">-->
+<!--                <div class="flex justify-between"><strong>${c.code}</strong><span>${c.severity==='pass'?'✅':'❌'}</span></div>-->
+<!--            </div>-->
+<!--        `).join('');-->
+<!--            finalReasoningTrailContent.textContent = payload.reasoning_trail.join('\n');-->
+<!--            renderStages();-->
+<!--        }-->
+
+<!--        submitButton.onclick = async()=>{-->
+<!--            const text = soapInput.value.trim();-->
+<!--            if(!text) return;-->
+<!--            inputForm.classList.add('hidden');-->
+<!--            aiThinking.classList.remove('hidden');-->
+<!--            allStages=[]; renderStages();-->
+<!--            await fetch(`${BACKEND_URL}/api/submit_soap`,{-->
+<!--                method:'POST', headers:{'Content-Type':'application/json'},-->
+<!--                body:JSON.stringify({soap_text:text,session_id:sessionId})-->
+<!--            });-->
+<!--        };-->
+
+<!--        respondButton.onclick= async()=>{-->
+<!--            const answers={};-->
+<!--            let ok=true;-->
+<!--            responsesForm.querySelectorAll('textarea').forEach(t=>{-->
+<!--                if(!t.value.trim()) ok=false;-->
+<!--                answers[t.name]=t.value.trim();-->
+<!--            });-->
+<!--            if(!ok) return alert('Please fill all');-->
+<!--            aiThinking.classList.remove('hidden');-->
+<!--            questionForm.classList.add('hidden');-->
+<!--            await fetch(`${BACKEND_URL}/api/respond?session_id=${sessionId}`,{-->
+<!--                method:'POST', headers:{'Content-Type':'application/json'},-->
+<!--                body:JSON.stringify({responses:[{service_code:currentServiceCode,answers}]})-->
+<!--            });-->
+<!--        };-->
+
+<!--        restartButton.onclick=()=>location.reload();-->
+
+<!--        connectWebSocket();-->
+<!--    });-->
+<!--</script>-->
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const soapInput = document.getElementById('soap-input');
         const submitButton = document.getElementById('submit-button');
-        const wsStatus = document.getElementById('ws-status');
         const inputForm = document.getElementById('input-form');
         const aiThinking = document.getElementById('ai-thinking');
         const reasoningTrail = document.getElementById('reasoning-trail');
-        const finalDocument = document.getElementById('final-document');
-        const restartButton = document.getElementById('restart-button');
-        const serviceCodesDiv = document.getElementById('service-codes');
-        const finalReasoningTrailContent = document.getElementById('final-reasoning-trail-content');
         const questionForm = document.getElementById('question-form');
         const questionText = document.getElementById('question-text');
         const responsesForm = document.getElementById('responses-form');
         const respondButton = document.getElementById('respond-button');
+        const finalDocument = document.getElementById('final-document');
+        const restartButton = document.getElementById('restart-button');
         const workflowStages = document.getElementById('workflow-stages');
 
-        let sessionId = null;
-        let currentServiceCode = null;
-        let ws = null;
+        let sessionId = null, currentServiceCode = null, ws = null;
         let allStages = [];
+
         const BACKEND_URL = "http://localhost:8000";
 
         const stageConfig = {
-            'pii_detection': { name: 'PII Detection', icon: '🔍', description: 'Scanning for sensitive information' },
-            'anonymize_pii': { name: 'PII Anonymization', icon: '🛡️', description: 'Protecting sensitive data' },
-            'predict_service_codes': { name: 'Code Prediction', icon: '🎯', description: 'AI predicting service codes' },
-            'rerank_service_codes': { name: 'Code Reranking', icon: '📊', description: 'Optimizing code selection' },
-            'validate_soap': { name: 'SOAP Validation', icon: '✅', description: 'Validating against rules' },
-            'question_generation': { name: 'Question Generation', icon: '❓', description: 'Generating clarifying questions' },
-            'output': { name: 'Final Output', icon: '📄', description: 'Preparing final results' },
-            'patient_summary_pdf': { name: 'PDF Summary', icon: '📥', description: 'Downloading patient summary PDF' }
+            'pii_detection': { name:'PII Detection', icon:'🔍', description:'Scanning for sensitive data' },
+            'anonymize_pii': { name:'Anonymization', icon:'🛡️', description:'Masking sensitive info'},
+            'predict_service_codes': { name:'Prediction', icon:'🎯', description:'Predicting codes'},
+            'rerank_service_codes': { name:'Rerank', icon:'📊', description:'Selecting best code'},
+            'validate_soap': { name:'Validation', icon:'✅', description:'Checking compliance'},
+            'check_referral_required': { name:'Check Referral', icon:'🏥', description:'Does referral needed?'},
+            'execute_referral': { name:'Referral', icon:'📨', description:'Trigger referral logic'},
+            'question_generation': { name:'Clarifications', icon:'❓', description:'Need more details'},
+            'output': { name:'Output', icon:'📄', description:'Finalizing'},
+            'patient_summary': { name:'Summary', icon:'🧾', description:'Patient summary'},
+            'patient_summary_pdf': { name:'PDF', icon:'📥', description:'Generating PDF'},
+            'execute_gmail_draft': { name:'Email Draft', icon:'✉️', description:'Saving draft'}
         };
-
         const stageOrder = Object.keys(stageConfig);
 
-        function initializeWorkflowStages() {
+        function initializeWorkflowStages(){
             allStages = [];
             workflowStages.innerHTML = '';
         }
 
-        function updateStagesFromState(stagesInPayload) {
-            if (!stagesInPayload || !Array.isArray(stagesInPayload)) return;
-            const executedStageCodes = stagesInPayload.map(s => s.code);
-            const lastExecutedCode = executedStageCodes[executedStageCodes.length - 1];
-            stagesInPayload.forEach(payloadStage => {
-                const existingStage = allStages.find(s => s.name === payloadStage.code);
-                if (!existingStage) {
-                    const newStage = { name: payloadStage.code, status: 'pending' };
-                    const logicalIndex = stageOrder.indexOf(newStage.name);
-                    let insertIndex = allStages.length;
-                    for (let i = 0; i < allStages.length; i++) {
-                        if (stageOrder.indexOf(allStages[i].name) > logicalIndex) {
-                            insertIndex = i;
-                            break;
-                        }
-                    }
-                    allStages.splice(insertIndex, 0, newStage);
+        function updateStagesFromState(stages){
+            if(!stages) return;
+            const executed = stages.map(s=>s.code);
+            const last = executed.at(-1);
+            stages.forEach(p=>{
+                if(!allStages.some(x=>x.name===p.code)){
+                    allStages.splice(stageOrder.indexOf(p.code),0,{name:p.code,status:'pending'});
                 }
             });
-            allStages.forEach(stage => {
-                const stageWasExecuted = executedStageCodes.includes(stage.name);
-                if (stageWasExecuted) {
-                    stage.status = (stage.name === lastExecutedCode) ? 'current' : 'completed';
-                } else {
-                    stage.status = 'pending';
-                }
+            allStages.forEach(s=>{
+                s.status = executed.includes(s.name) ?
+                    (s.name===last?'current':'completed') : 'pending';
             });
-            renderWorkflowStages();
+            renderStages();
         }
 
-        function renderWorkflowStages() {
-            if (allStages.length === 0) {
-                workflowStages.innerHTML = '<div class="text-center text-slate-400 py-8">Agent is analyzing...</div>';
+        function renderStages(){
+            workflowStages.innerHTML='';
+            if(!allStages.length){
+                workflowStages.innerHTML='<div class="py-6 text-center text-slate-500">Waiting...</div>';
                 return;
             }
-            workflowStages.innerHTML = '';
-            allStages.forEach((stage, index) => {
-                const config = stageConfig[stage.name];
-                if (!config) return;
-                const stageDiv = document.createElement('div');
-                stageDiv.className = `stage-node ${stage.status}`;
-                stageDiv.innerHTML = `
-                <div class="flex items-center space-x-3 p-3 rounded-lg ${getStageBackgroundClass(stage.status)}">
-                    <div class="stage-icon ${stage.status}">${config.icon}</div>
-                    <div class="flex-1">
-                        <div class="text-white font-semibold text-sm">${config.name}</div>
-                        <div class="text-slate-400 text-xs">${config.description}</div>
-                    </div>
-                    <div class="stage-status">${getStatusIndicator(stage.status)}</div>
+            allStages.forEach((s,i)=>{
+                const c = stageConfig[s.name];
+                const div = document.createElement('div');
+                div.innerHTML = `
+            <div class="flex space-x-3 p-3 rounded ${s.status==='current'?'bg-purple-600/20':
+                    s.status==='completed'?'bg-green-600/20':'bg-slate-700/20'}">
+                <span>${c.icon}</span>
+                <div class="flex-1">
+                    <div class="text-sm font-bold">${c.name}</div>
+                    <div class="text-[11px] text-slate-400">${c.description}</div>
                 </div>
-            `;
-                workflowStages.appendChild(stageDiv);
-                if (index < allStages.length - 1) {
-                    const nextStageStatus = allStages[index + 1].status;
-                    const connector = document.createElement('div');
-                    connector.className = `stage-connector ${nextStageStatus !== 'pending' ? 'active' : ''}`;
-                    workflowStages.appendChild(connector);
+                <div>${s.status==='current'?'⏳':s.status==='completed'?'✅':''}</div>
+            </div>`;
+                workflowStages.appendChild(div);
+
+                if(i<allStages.length-1){
+                    const line=document.createElement('div');
+                    line.className=`h-2 rounded-full my-1 ${allStages[i+1].status!=='pending'
+                        ?'bg-gradient-to-r from-purple-600 to-blue-600':'bg-slate-600/40'}`;
+                    workflowStages.appendChild(line);
                 }
             });
         }
 
-        function getStageBackgroundClass(status) {
-            switch (status) {
-                case 'current': return 'bg-gradient-to-r from-purple-600/30 to-blue-600/30 border border-purple-500/50';
-                case 'completed': return 'bg-gradient-to-r from-green-600/20 to-emerald-600/20 border border-green-500/30';
-                case 'waiting': return 'bg-gradient-to-r from-orange-600/30 to-red-600/30 border border-orange-500/50';
-                case 'skipped': return 'bg-gradient-to-r from-orange-600/20 to-yellow-600/20 border border-orange-500/30';
-                default: return 'bg-slate-800/30 border border-slate-600/30';
-            }
-        }
+        function updateReasoningTrail(trail){ reasoningTrail.textContent = trail.slice(-10).join('\n'); }
 
-        function getStatusIndicator(status) {
-            switch (status) {
-                case 'current': return '<div class="w-3 h-3 bg-purple-500 rounded-full animate-pulse"></div>';
-                case 'completed': return '<div class="w-3 h-3 bg-green-500 rounded-full"></div>';
-                case 'waiting': return '<div class="w-3 h-3 bg-orange-500 rounded-full animate-ping"></div>';
-                default: return '<div class="w-3 h-3 bg-gray-500 rounded-full opacity-30"></div>';
-            }
-        }
-
-        function updateReasoningTrail(trail) {
-            if (!Array.isArray(trail)) return;
-            reasoningTrail.innerHTML = '';
-            trail.slice(-10).forEach(line => {
-                const span = document.createElement('span');
-                span.textContent = line + '\n';
-                span.className = 'text-slate-400';
-                reasoningTrail.appendChild(span);
-            });
-            reasoningTrail.parentElement.scrollTop = reasoningTrail.parentElement.scrollHeight;
-        }
-
-        function connectWebSocket() {
-            wsStatus.textContent = "Connecting to AI...";
-            wsStatus.className = "text-yellow-400 bg-yellow-400/10 border border-yellow-400/30";
-
-            sessionId = localStorage.getItem('sessionId') || crypto.randomUUID();
-            localStorage.setItem('sessionId', sessionId);
+        function connectWS(){
+            sessionId = crypto.randomUUID();
             ws = new WebSocket(`ws://localhost:8000/ws/agentic-workflow/${sessionId}`);
+            ws.onopen = () => submitButton.disabled = false;
 
-            ws.onopen = () => {
-                wsStatus.textContent = "🤖 AI Connected";
-                wsStatus.className = "text-green-400 bg-green-400/10 border border-green-400/30";
-                submitButton.disabled = false;
-            };
+            ws.onmessage = (e)=>{
+                const m = JSON.parse(e.data), p = m.payload||{};
+                if(p.stages) updateStagesFromState(p.stages);
+                if(p.reasoning_trail) updateReasoningTrail(p.reasoning_trail);
 
-            ws.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    const payload = data.payload || {};
-                    if (payload.reasoning_trail) updateReasoningTrail(payload.reasoning_trail);
-                    if (payload.stages) updateStagesFromState(payload.stages);
-
-                    // ----------------------------
-                    // PDF download event handling
-                    // ----------------------------
-                    if (data.event_type === 'pdf_ready') {
-                        const { filename, pdf_base64 } = data.payload;
-                        if (filename && pdf_base64) {
-                            const byteCharacters = atob(pdf_base64);
-                            const byteNumbers = new Array(byteCharacters.length);
-                            for (let i = 0; i < byteCharacters.length; i++) {
-                                byteNumbers[i] = byteCharacters.charCodeAt(i);
-                            }
-                            const byteArray = new Uint8Array(byteNumbers);
-                            const blob = new Blob([byteArray], { type: "application/pdf" });
-                            const link = document.createElement("a");
-                            link.href = window.URL.createObjectURL(blob);
-                            link.download = filename;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                            setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-
-                            // mark stage as completed
-                            const pdfStage = allStages.find(s => s.name === 'patient_summary_pdf');
-                            if (pdfStage) {
-                                pdfStage.status = 'completed';
-                                renderWorkflowStages();
-                            }
-                        }
-                    }
-
-
-                    // if (data.event_type === 'download_pdf') {
-                    //     const { filename, pdf_bytes_base64 } = data.payload;
-                    //     const byteCharacters = atob(pdf_bytes_base64);
-                    //     const byteNumbers = new Array(byteCharacters.length);
-                    //     for (let i = 0; i < byteCharacters.length; i++) {
-                    //         byteNumbers[i] = byteCharacters.charCodeAt(i);
-                    //     }
-                    //     const byteArray = new Uint8Array(byteNumbers);
-                    //     const blob = new Blob([byteArray], { type: "application/pdf" });
-                    //     const link = document.createElement("a");
-                    //     link.href = window.URL.createObjectURL(blob);
-                    //     link.download = filename;
-                    //     link.click();
-                    //     setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-                    //
-                    //     // mark stage as completed
-                    //     const pdfStage = allStages.find(s => s.name === 'patient_summary_pdf');
-                    //     if (pdfStage) {
-                    //         pdfStage.status = 'completed';
-                    //         renderWorkflowStages();
-                    //     }
-                    // }
-
-                    switch (data.event_type) {
-                        case 'waiting_for_user': handleWaitingForUser(payload); break;
-                        case 'workflow_finished': handleWorkflowFinished(payload); break;
-                    }
-                } catch (e) {
-                    console.error("Failed to parse WebSocket message:", e);
-                }
-            };
-
-            ws.onclose = () => {
-                wsStatus.textContent = "❌ Disconnected";
-                wsStatus.className = "text-red-400 bg-red-400/10 border border-red-400/30";
-                submitButton.disabled = true;
-            };
-
-            ws.onerror = (error) => {
-                console.error("WebSocket error:", error);
-                wsStatus.textContent = "⚠️ Connection Error";
-                wsStatus.className = "text-red-400 bg-red-400/10 border border-red-400/30";
+                if(m.event_type==='waiting_for_user') handleWaitingForUser(p);
+                if(m.event_type==='workflow_finished') handleWorkflowFinished(p);
+                if(m.event_type==='gmail_draft_created') alert('Gmail draft created!');
             };
         }
 
-        // ----------------------------
-        // Existing event handlers
-        // ----------------------------
-        function handleWaitingForUser(payload) {
+        function downloadPDF(){
+            window.open(`${BACKEND_URL}/api/download_pdf/${sessionId}`, '_blank');
+        }
+
+        function handleWaitingForUser(p){
             aiThinking.classList.add('hidden');
             questionForm.classList.remove('hidden');
-            const questionStage = allStages.find(s => s.name === 'question_generation');
-            if (questionStage) {
-                const lastStage = allStages.find(s => s.name === 'validate_soap');
-                if (lastStage) lastStage.status = 'completed';
-                questionStage.status = 'waiting';
-            }
-            renderWorkflowStages();
-            questionText.textContent = payload.question || "Please provide additional information.";
-            currentServiceCode = payload.predicted_service_codes?.[0]?.code || null;
+            currentServiceCode = p.predicted_service_codes?.[0]?.code || null;
+            questionText.textContent = p.question || 'Please supply information:';
             responsesForm.innerHTML = '';
-            payload.predicted_service_codes?.[0]?.missing_terms?.forEach(termObj => {
-                if (!termObj.answered) {
-                    const termId = termObj.term.replace(/\s+/g, '-').toLowerCase();
-                    const div = document.createElement('div');
-                    div.className = "space-y-2";
-                    div.innerHTML = `<label for="${termId}" class="block text-sm font-medium text-slate-300">${termObj.term}</label>
-                             <textarea id="${termId}" name="${termObj.term}" rows="2" class="w-full p-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition duration-300" placeholder="Enter ${termObj.term.toLowerCase()}..."></textarea>`;
-                    responsesForm.appendChild(div);
-                }
+            (p.predicted_service_codes?.[0]?.missing_terms || []).forEach(mt=>{
+                const id = mt.term.toLowerCase().replace(/\s/g,'-');
+                responsesForm.innerHTML += `
+            <label for="${id}" class="block text-sm mt-2">${mt.term}</label>
+            <textarea id="${id}" name="${mt.term}" class="w-full p-2 rounded bg-slate-800"></textarea>`;
             });
         }
 
-        function handleWorkflowFinished(payload) {
-            inputForm.classList.add('hidden');
+        function handleWorkflowFinished(p){
             aiThinking.classList.add('hidden');
             questionForm.classList.add('hidden');
             finalDocument.classList.remove('hidden');
-            let outputStage = allStages.find(s => s.name === 'output');
-            if (!outputStage) {
-                outputStage = { name: 'output', status: 'completed' };
-                allStages.push(outputStage);
-            } else outputStage.status = 'completed';
-            allStages.forEach(s => { if (s.name !== 'output') s.status = 'completed'; });
-            renderWorkflowStages();
-            if (payload.predicted_service_codes) {
-                const html = payload.predicted_service_codes.map(code => {
-                    const severityColor = code.severity === 'fail' ? 'from-red-500 to-red-600' : 'from-green-500 to-green-600';
-                    const severityLabel = code.severity === 'fail' ? '❌ Validation Failed' : '✅ Validation Passed';
-                    const missingTerms = code.missing_terms?.map(term =>
-                        `<div class="flex justify-between items-center py-1"><span>${term.term}</span><span class="${term.answered ? 'text-green-400' : 'text-red-400'}">${term.answered ? '✓' : '✗'}</span></div>`
-                    ).join('') || '';
-                    const suggestions = code.suggestions?.map(s => `<li class="text-slate-300">${s}</li>`).join('') || '';
-                    return `<div class="glassmorphism rounded-xl p-4 mb-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-xl font-bold text-white">Service Code: ${code.code}</h3>
-                        <span class="px-3 py-1 rounded-full text-sm font-semibold bg-gradient-to-r ${severityColor} text-white">${severityLabel}</span>
-                    </div>
-                    ${missingTerms ? `<div class="mb-3"><h4 class="text-sm font-semibold text-slate-300 mb-2">Missing Terms:</h4><div class="bg-slate-800/50 rounded-lg p-3 space-y-1">${missingTerms}</div></div>` : ''}
-                    ${suggestions ? `<div><h4 class="text-sm font-semibold text-slate-300 mb-2">Suggestions:</h4><ul class="list-disc list-inside text-sm space-y-1">${suggestions}</ul></div>` : ''}
-                </div>`;
-                }).join('');
-                serviceCodesDiv.innerHTML = html;
-            }
-            if (payload.reasoning_trail) finalReasoningTrailContent.textContent = payload.reasoning_trail.join('\n');
+
+            finalDocument.innerHTML = `
+        <div class="flex border-b mb-4">
+            <button id="tab-patient" class="px-3 py-2 border-b-2 border-blue-500 text-blue-300">Patient Summary</button>
+            <button id="tab-clinical" class="px-3 py-2 text-slate-400">Clinical Details</button>
+        </div>
+        <div id="view-patient"></div>
+        <div id="view-clinical" class="hidden"></div>`;
+
+            const patientView=document.getElementById('view-patient');
+            patientView.innerHTML = `
+        <p class="mb-4 whitespace-pre-line">${p.patient_summary || 'No summary available.'}</p>
+        <button id="dlpdf" class="bg-blue-600 px-3 py-2 rounded mr-2 text-sm">📄 Download PDF</button>
+        <button id="emaildraft" class="bg-green-700 px-3 py-2 rounded text-sm">✉️ Create Gmail Draft</button>`;
+
+            document.getElementById('dlpdf').onclick = downloadPDF;
+            document.getElementById('emaildraft').onclick = () => {
+                fetch(`${BACKEND_URL}/api/generate_gmail?session=${sessionId}`);
+            };
+
+            const clinical=document.getElementById('view-clinical');
+            clinical.innerHTML = (p.predicted_service_codes || []).map(c=>`
+        <div class="p-3 mb-3 rounded bg-slate-700">
+            <div class="font-semibold">${c.code} (${c.severity})</div>
+            <div class="text-xs">${(c.suggestions||[]).join(' ')}</div>
+        </div>`).join('') +
+                `<pre class="text-[11px] mt-4">${(p.reasoning_trail||[]).join('\n')}</pre>`;
+
+            document.getElementById('tab-patient').onclick = ()=>switchTab(true);
+            document.getElementById('tab-clinical').onclick = ()=>switchTab(false);
+            renderStages();
         }
 
-        submitButton.addEventListener('click', async () => {
-            const soapText = soapInput.value.trim();
-            if (!soapText) return alert('Please enter a SOAP note.');
-            initializeWorkflowStages();
+        function switchTab(pt){
+            document.getElementById('view-patient').classList.toggle('hidden', !pt);
+            document.getElementById('view-clinical').classList.toggle('hidden', pt);
+            document.getElementById('tab-patient').classList.toggle('border-blue-500', pt);
+            document.getElementById('tab-clinical').classList.toggle('border-blue-500', !pt);
+        }
+
+        submitButton.onclick = async ()=>{
+            const txt = soapInput.value.trim();
+            if(!txt) return;
             inputForm.classList.add('hidden');
             aiThinking.classList.remove('hidden');
-            reasoningTrail.textContent = 'AI Agent initializing...\n';
-            try {
-                const response = await fetch(`${BACKEND_URL}/api/submit_soap`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ soap_text: soapText, session_id: sessionId }) });
-                if (!response.ok) {
-                    const result = await response.json();
-                    reasoningTrail.textContent = `Error: ${result.detail}`;
-                }
-            } catch (error) { reasoningTrail.textContent = `Connection Error: ${error.message}`; }
-        });
-
-        respondButton.addEventListener('click', async () => {
-            const userResponses = {};
-            let allFilled = true;
-            responsesForm.querySelectorAll('textarea').forEach(input => {
-                if (!input.value.trim()) allFilled = false;
-                userResponses[input.name] = input.value.trim();
+            initializeWorkflowStages();
+            await fetch(`${BACKEND_URL}/api/submit_soap`, {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({soap_text: txt, session_id: sessionId})
             });
-            if (!allFilled) return alert('Please fill in all required fields.');
+        };
+
+        respondButton.onclick = async ()=>{
+            const answers={}, areas=responsesForm.querySelectorAll('textarea');
+            for(let t of areas){
+                if(!t.value.trim()) return alert('Please fill all');
+                answers[t.name] = t.value.trim();
+            }
             questionForm.classList.add('hidden');
             aiThinking.classList.remove('hidden');
-            try {
-                const response = await fetch(`${BACKEND_URL}/api/respond?session_id=${sessionId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ responses: [{ service_code: currentServiceCode, answers: userResponses }] }) });
-                if (!response.ok) {
-                    const result = await response.json();
-                    reasoningTrail.textContent = `Error: ${result.detail}`;
-                }
-            } catch (error) { reasoningTrail.textContent = `Connection Error: ${error.message}`; }
-        });
+            await fetch(`${BACKEND_URL}/api/respond?session_id=${sessionId}`, {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({responses:[{service_code: currentServiceCode, answers}]})
+            });
+        };
 
-        restartButton.addEventListener('click', () => {
-            inputForm.classList.remove('hidden');
-            finalDocument.classList.add('hidden');
-            aiThinking.classList.add('hidden');
-            questionForm.classList.add('hidden');
-            soapInput.value = '';
-            serviceCodesDiv.innerHTML = '';
-            finalReasoningTrailContent.textContent = '';
-            sessionId = crypto.randomUUID();
-            localStorage.setItem('sessionId', sessionId);
-            initializeWorkflowStages();
-            if (ws) ws.close();
-            connectWebSocket();
-        });
+        restartButton.onclick = ()=>location.reload();
 
-        initializeWorkflowStages();
-        connectWebSocket();
+        connectWS();
     });
 </script>
+
 
 </body>
 </html>

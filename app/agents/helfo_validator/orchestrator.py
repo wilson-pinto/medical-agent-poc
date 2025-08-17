@@ -9,6 +9,8 @@ from pydantic import ValidationError
 
 from app.schemas_new.agentic_state import AgenticState, MissingInfoItem, ServiceCodeState
 from app.agentic_workflow import run_workflow
+from app.core.patient_summary_node import patient_summary_node
+from app.core.patient_summary_pdf_node import patient_summary_pdf_node
 
 SESSION_KEY_PREFIX = "session_state:"
 
@@ -73,7 +75,17 @@ class HelFoAgentOrchestrator:
                 else:
                     ws_send(event_payload)
 
+            # Run the main workflow
             final_state = await run_workflow(initial_state=state, ws_send=ws_send)
+
+            # Ensure patient summary exists before PDF generation
+            if not getattr(final_state, "patient_summary", None):
+                summary_updates = await patient_summary_node(final_state, ws_send=ws_send)
+                final_state = final_state.model_copy(update=summary_updates)
+
+            # Generate PDF
+            pdf_updates = await patient_summary_pdf_node(final_state, ws_send=ws_send)
+            final_state = final_state.model_copy(update=pdf_updates)
 
             self._save_state_to_redis(session_id, final_state)
             if ws_send:
@@ -106,7 +118,6 @@ class HelFoAgentOrchestrator:
 
         # Apply user responses
         if user_responses:
-            # Update SOAP text
             merged_text = ". ".join([f"{k}: {v}" for k, v in user_responses.items()]) + "."
             state.soap_text += " " + merged_text
             print(f"[ORCHESTRATOR] Updated SOAP text: {state.soap_text}")
@@ -132,6 +143,15 @@ class HelFoAgentOrchestrator:
 
         try:
             final_state = await run_workflow(initial_state=state, ws_send=ws_send)
+
+            # Ensure patient summary exists before PDF generation
+            if not getattr(final_state, "patient_summary", None):
+                summary_updates = await patient_summary_node(final_state, ws_send=ws_send)
+                final_state = final_state.model_copy(update=summary_updates)
+
+            # Generate PDF
+            pdf_updates = await patient_summary_pdf_node(final_state, ws_send=ws_send)
+            final_state = final_state.model_copy(update=pdf_updates)
 
             self._save_state_to_redis(session_id, final_state)
             if ws_send:

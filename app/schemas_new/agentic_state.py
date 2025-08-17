@@ -41,6 +41,8 @@ class AgenticState(BaseModel):
     requires_referral_check: bool = False
     referral_required: Optional[bool] = None
     referral_rule_applied: Optional[str] = None
+    patient_summary_pdf_path: Optional[str] = None
+
 
 
     def update(self, **kwargs: Any) -> 'AgenticState':

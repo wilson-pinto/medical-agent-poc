@@ -47,3 +47,7 @@ tqdm==4.67.1
 rich==14.1.0
 redis
 reportlab>=4.0
+
+#pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
+#pip install llama-cpp-python
+
