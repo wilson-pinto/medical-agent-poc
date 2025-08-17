@@ -64,7 +64,7 @@ pip install -r requirements.txt
 If you don’t have `requirements.txt`, run:
 
 ```bash
-pip install fastapi uvicorn pydantic sentence-transformers openai faiss-cpu python-dotenv google-generativeai openpyxl pandas
+pip install fastapi uvicorn pydantic sentence-transformers openai faiss-cpu python-dotenv google-generativeai openpyxl pandas presidio-analyzer presidio-anonymizer
 ```
 
 ### 3. Set Up Environment Variables

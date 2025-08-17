@@ -7,7 +7,7 @@ import numpy as np
 from app.core.sentence_model_registry import get_sentence_model
 
 # --------- Config ---------
-EXCEL_FILE = "data/icd10_norway.xlsx"
+EXCEL_FILE = "data/icd10_english.xlsx"
 DB_FILE = "data/diagnosis_codes.db"
 FAISS_FILE = "index/diagnosis_index.faiss"
 EMBEDDING_MODEL = "NbAiLab/nb-sbert-base"
@@ -21,8 +21,8 @@ def load_codes_from_excel(path):
     df = pd.read_excel(path)
     df.columns = [col.strip() for col in df.columns]
     df = df.rename(columns={
-        "Kode": "code",
-        "Tekst uten lengdebegrensning": "description"
+        "Code": "code",
+        "Long Description": "description"
     })
     df = df[["code", "description"]].dropna()
     return list(df.itertuples(index=False, name=None))
