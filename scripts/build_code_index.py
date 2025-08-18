@@ -7,7 +7,7 @@ import numpy as np
 from app.core.sentence_model_registry import get_sentence_model
 
 # --------- Config ---------
-XML_FILE = "data/taksttabell.xml"
+XML_FILE = "data/taksttabell_english.xml"
 DB_FILE = "data/codes.db"
 FAISS_INDEX_FILE = "index/codes_index.faiss"
 EMBED_MODEL = "NbAiLab/nb-sbert-base"

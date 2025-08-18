@@ -70,6 +70,8 @@ def search_diagnosis_with_explanation(
             similarity_score = 1 - (dist ** 2) / 2
             candidates.append((code, description, similarity_score))
 
+        print("---------------------------------------------------")
+        print(f"Initial FAISS search results for '{concept}':")
         print(f"Candidates: {json.dumps(candidates, indent=2, ensure_ascii=False, default=to_serializable)}")
 
         if not candidates:

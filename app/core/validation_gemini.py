@@ -127,7 +127,10 @@ Your strict tasks:
 - ✅ Select the ones that are clinically plausible for the concept.
 - ✅ Exclude unrelated or unlikely ones. If none are relevant, return an empty list.
 - ✅ Rank the selected diagnoses by clinical plausibility and similarity.
-- ✅ Provide a short reason for inclusion.
+- ✅ For each selected diagnosis, explain briefly **why it is clinically relevant** to the concept. 
+     - The reason should mention the **clinical or pathophysiological connection** between the concept and the diagnosis. 
+     - Do **not** refer to model scores or similarity metrics (e.g., FAISS or cross-encoder). 
+     - Do **not** mention re-ranking or embeddings.
 - ✅ Always include the grouped clinical concept in the output for traceability.
 
 Output format:
@@ -138,7 +141,7 @@ Return a JSON object with the following structure:
     {{
       "code": "<ICD code from input>",
       "description": "<diagnosis description from input>",
-      "reason": "<brief justification>",
+      "reason": "<clinical justification: why this diagnosis matches the concept>",
       "similarity": <similarity score from input>,
       "rank": <rank starting at 1>
     }}
@@ -166,17 +169,19 @@ Output only the JSON object.
                 filtered = matches  # fallback if JSON parsing fails
 
             # Limit final top N matches here
-            filtered = filtered[:final_top_n]
+            if len(filtered['diagnoses']) > final_top_n:
+                filtered['diagnoses'] = filtered['diagnoses'][:final_top_n]
 
             # Add ranking if missing
-            for i, diag in enumerate(filtered):
-                diag['rank'] = i + 1
+            # for i, diag in enumerate(filtered):
+            #     diag['rank'] = i + 1
 
             updated_results.append({
                 "concept": concept,
-                "matches": filtered
+                "matches": filtered['diagnoses']
             })
         except Exception as e:
+            print(f"Gemini reranking failed for concept: {concept}, error: {e}")
             logger.exception(f"Gemini reranking failed for concept: {concept}")
             # fallback to original matches with limit
             updated_results.append({

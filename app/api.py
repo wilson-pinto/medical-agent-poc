@@ -31,6 +31,17 @@ def rerank_agent(payload: RerankRequest):
 # def check_note_requirements_api(payload: NoteCheckRequest):
 #     return {"result": validation_gemini.check_note_requirements(payload.soap, payload.service_codes)}
 
+@router.post("/ai/suggest-service-codes",
+summary="Suggest HELFO service codes from SOAP notes using Gemini LLM"
+)
+def suggest_service_codes(payload: QueryRequest):
+    candidates = service_search.search_codes(payload.query, payload.top_k)
+    if config.USE_GEMINI:
+        decision = rerank_gemini.get_best_code(payload.query, candidates)
+    else:
+        decision = rerank_openai.rerank_with_openai(payload.query, candidates)
+    return {"session_id": payload.session_id, "decision": decision}
+
 
 @router.post("/ai/extract-diagnoses")
 def extract_diagnoses(
@@ -55,8 +66,6 @@ def extract_diagnoses(
         final_top_n=final_top_n
     )
     return result
-
-
 
 @router.post("/ai/check-service-diagnosis")
 def check_service_diagnosis(payload: ServiceDiagnosisInput):
