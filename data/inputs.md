@@ -26,7 +26,6 @@
   "soap": "The patient came in with a fever. Temperature measurement was performed, and advice was given regarding hydration and the use of pain relievers. Regarding chronic disease, a follow-up was conducted where a medical evaluation was done, but the treatment plan was missing. For heart surgery, surgery and preoperative consultation were mentioned, but there was no risk assessment or details about tests such as ECG or blood samples.",
   "service_codes": ["2fev", "4chr", "3hrt"]
 }
-}
 ```
 
 # Extract Diagnosis code
