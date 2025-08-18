@@ -194,3 +194,54 @@ async def download_pdf(session_id: str):
         filename=pdf_file.name,
         media_type='application/pdf'
     )
+
+# ----------------------------
+# Referral Draft (.eml) Download
+# ----------------------------
+EML_DIR = BASE_DIR / "tmp_email_drafts"
+EML_DIR.mkdir(exist_ok=True, parents=True)
+
+# @router.get("/download_eml/{session_id}")
+# async def download_eml(session_id: str):
+#     """
+#     Returns the referral draft .eml file for the given session_id.
+#     """
+#     # Attempt to find the file for this session
+#     matching_files = list(EML_DIR.glob(f"referral_*_{session_id}.eml"))
+#
+#     if not matching_files:
+#         # Fallback: pick the latest .eml file for this session
+#         matching_files = sorted(
+#             EML_DIR.glob(f"referral_*_{session_id}*.eml"),
+#             key=lambda f: f.stat().st_mtime,
+#             reverse=True
+#         )
+#
+#     if not matching_files:
+#         raise HTTPException(status_code=404, detail="Referral draft (.eml) not found")
+#
+#     eml_file = matching_files[0]
+#     logger.info(f"[DOWNLOAD_EML] Returning file: {eml_file.name} for session {session_id}")
+#
+#     return FileResponse(
+#         path=str(eml_file.resolve()),
+#         filename=eml_file.name,
+#         media_type='message/rfc822'
+#     )
+@router.get("/download_eml/{session_id}")
+async def download_eml(session_id: str):
+    """
+    Returns the referral draft .eml file for the given session_id.
+    """
+    eml_file = EML_DIR / f"referral_{session_id}.eml"
+
+    if not eml_file.exists():
+        raise HTTPException(status_code=404, detail="Referral draft (.eml) not found")
+
+#     logger.info(f"[DOWNLOAD_EML] Returning file: {eml_file.name} for session {session_id}")
+
+    return FileResponse(
+        path=str(eml_file.resolve()),
+        filename=eml_file.name,
+        media_type='message/rfc822'
+    )

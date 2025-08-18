@@ -36,12 +36,17 @@ class AgenticState(BaseModel):
     max_loops: int = 10
     anonymized_note: Optional[str] = None
     noop: Optional[bool] = None
-    stages: List[StageEvent] = Field(default_factory=list)  # <-- new field
+    stages: List[StageEvent] = Field(default_factory=list)
     session_id: str
     requires_referral_check: bool = False
     referral_required: Optional[bool] = None
     referral_rule_applied: Optional[str] = None
+    patient_info: Optional[str] = None
+    suggested_specialist: Optional[str] = None
     patient_summary_pdf_path: Optional[str] = None
+    referral_eml_path: Optional[str] = None
+    referral_draft_text: Optional[str] = None
+
 
 
 

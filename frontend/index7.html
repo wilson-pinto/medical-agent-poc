@@ -243,11 +243,12 @@
             'validate_soap': { name:'Validation', icon:'✅', description:'Checking compliance'},
             'check_referral_required': { name:'Check Referral', icon:'🏥', description:'Does referral needed?'},
             'execute_referral': { name:'Referral', icon:'📨', description:'Trigger referral logic'},
+            'generate_referral_draft': { name:'Draft Referral', icon:'✉️', description:'Generate referral draft'},
             'question_generation': { name:'Clarifications', icon:'❓', description:'Need more details'},
             'output': { name:'Output', icon:'📄', description:'Finalizing'},
             'patient_summary': { name:'Summary', icon:'🧾', description:'Patient summary'},
             'patient_summary_pdf': { name:'PDF', icon:'📥', description:'Generating PDF'},
-            'execute_gmail_draft': { name:'Email Draft', icon:'✉️', description:'Saving draft'}
+            'dummy_end': { name:'End', icon:'🏁', description:'Workflow completed'}
         };
         const stageOrder = Object.keys(stageConfig);
 
@@ -316,12 +317,15 @@
 
                 if(m.event_type==='waiting_for_user') handleWaitingForUser(p);
                 if(m.event_type==='workflow_finished') handleWorkflowFinished(p);
-                if(m.event_type==='gmail_draft_created') alert('Gmail draft created!');
             };
         }
 
         function downloadPDF(){
             window.open(`${BACKEND_URL}/api/download_pdf/${sessionId}`, '_blank');
+        }
+
+        function downloadReferral(){
+            window.open(`${BACKEND_URL}/api/download_eml/${sessionId}`, '_blank');
         }
 
         function handleWaitingForUser(p){
@@ -351,27 +355,25 @@
         <div id="view-patient"></div>
         <div id="view-clinical" class="hidden"></div>`;
 
-            const patientView=document.getElementById('view-patient');
+            const patientView = document.getElementById('view-patient');
             patientView.innerHTML = `
         <p class="mb-4 whitespace-pre-line">${p.patient_summary || 'No summary available.'}</p>
         <button id="dlpdf" class="bg-blue-600 px-3 py-2 rounded mr-2 text-sm">📄 Download PDF</button>
-        <button id="emaildraft" class="bg-green-700 px-3 py-2 rounded text-sm">✉️ Create Gmail Draft</button>`;
+        <button id="dlreferral" class="bg-green-700 px-3 py-2 rounded text-sm">✉️ Download Referral Draft</button>`;
 
             document.getElementById('dlpdf').onclick = downloadPDF;
-            document.getElementById('emaildraft').onclick = () => {
-                fetch(`${BACKEND_URL}/api/generate_gmail?session=${sessionId}`);
-            };
+            document.getElementById('dlreferral').onclick = downloadReferral;
 
-            const clinical=document.getElementById('view-clinical');
-            clinical.innerHTML = (p.predicted_service_codes || []).map(c=>`
+            const clinical = document.getElementById('view-clinical');
+            clinical.innerHTML = (p.predicted_service_codes || []).map(c => `
         <div class="p-3 mb-3 rounded bg-slate-700">
             <div class="font-semibold">${c.code} (${c.severity})</div>
-            <div class="text-xs">${(c.suggestions||[]).join(' ')}</div>
+            <div class="text-xs">${(c.suggestions || []).join(' ')}</div>
         </div>`).join('') +
-                `<pre class="text-[11px] mt-4">${(p.reasoning_trail||[]).join('\n')}</pre>`;
+                `<pre class="text-[11px] mt-4">${(p.reasoning_trail || []).join('\n')}</pre>`;
 
-            document.getElementById('tab-patient').onclick = ()=>switchTab(true);
-            document.getElementById('tab-clinical').onclick = ()=>switchTab(false);
+            document.getElementById('tab-patient').onclick = () => switchTab(true);
+            document.getElementById('tab-clinical').onclick = () => switchTab(false);
             renderStages();
         }
 
@@ -406,7 +408,7 @@
             await fetch(`${BACKEND_URL}/api/respond?session_id=${sessionId}`, {
                 method:'POST',
                 headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({responses:[{service_code: currentServiceCode, answers}]})
+                body: JSON.stringify({responses:[{service_code: currentServiceCode, answers}]} )
             });
         };
 

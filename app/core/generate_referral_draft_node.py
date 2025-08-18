@@ -1,6 +1,7 @@
 import os
 import subprocess
 from typing import Dict, Any, Optional, Callable
+from datetime import datetime
 from app.schemas_new.agentic_state import AgenticState, StageEvent
 from app.utils.logging import get_logger
 from app.config import USE_GEMINI_FOR_PATIENT_SUMMARY, GEMINI_PATIENT_SUMMARY_API_KEY, LOCAL_LLM_PATH
@@ -8,25 +9,11 @@ from app.config import USE_GEMINI_FOR_PATIENT_SUMMARY, GEMINI_PATIENT_SUMMARY_AP
 logger = get_logger(__name__)
 
 # ---------------------------
-# Optional Gmail integration
-# ---------------------------
-try:
-    from googleapiclient.discovery import build
-    from google.oauth2.credentials import Credentials
-    GMAIL_ENABLED = True
-except ImportError:
-    logger.warning("[REFERRAL_DRAFT_NODE] Gmail integration not installed. Skipping email draft creation.")
-    GMAIL_ENABLED = False
-
-# ---------------------------
 # Helper: Run Local LLaMA
 # ---------------------------
 def run_local_llama(prompt: str, temperature: float = 0.8, threads: int = 8) -> str:
-    """
-    Runs local LLaMA to generate referral draft text.
-    """
-    current_file_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.abspath(os.path.join(current_file_dir, "..", ".."))
+    """Runs local LLaMA to generate referral draft text."""
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     llama_exe_path = os.path.join(project_root, "models", "llama-b6018-bin-win-cpu-x64", "llama-run.exe")
 
     if not os.path.exists(llama_exe_path):
@@ -47,54 +34,39 @@ def run_local_llama(prompt: str, temperature: float = 0.8, threads: int = 8) -> 
             check=True
         )
         return result.stdout.strip()
-    except subprocess.CalledProcessError as e:
-        logger.error(f"[REFERRAL_DRAFT_NODE] Local LLaMA failed:\nSTDOUT: {e.stdout}\nSTDERR: {e.stderr}")
-        return ""
     except Exception as e:
         logger.error(f"[REFERRAL_DRAFT_NODE] Local LLaMA failed: {e}")
         return ""
 
 # ---------------------------
-# Helper: Gmail Draft
+# Helper: Save .eml file
 # ---------------------------
-def create_gmail_draft(user_creds: Credentials, to: str, subject: str, body: str) -> Optional[str]:
-    """
-    Creates a draft in Gmail. Returns draft ID or None.
-    """
-    if not GMAIL_ENABLED:
-        logger.warning("[REFERRAL_DRAFT_NODE] Gmail not enabled.")
-        return None
+def save_referral_as_eml(draft_text: str, session_id: str) -> str:
+    os.makedirs("tmp_email_drafts", exist_ok=True)
+    filename = f"tmp_email_drafts/referral_{session_id}.eml"
+    eml_content = f"""From: gpclinic@example.com
+To: specialist@example.com
+Subject: Referral
+Date: {datetime.now().strftime("%a, %d %b %Y %H:%M:%S")}
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
 
-    try:
-        service = build('gmail', 'v1', credentials=user_creds)
-        message = {
-            'message': {
-                'to': to,
-                'subject': subject,
-                'body': body
-            }
-        }
-        draft = service.users().drafts().create(userId="me", body=message).execute()
-        return draft.get("id")
-    except Exception as e:
-        logger.error(f"[REFERRAL_DRAFT_NODE] Failed to create Gmail draft: {e}")
-        return None
+{draft_text}
+"""
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(eml_content)
+    return filename
 
 # ---------------------------
 # Referral Draft Node
 # ---------------------------
 async def generate_referral_draft_node(
     state: AgenticState,
-    ws_send: Optional[Callable[[Dict[str, Any]], Any]] = None,
-    gmail_creds: Optional[Any] = None  # pass OAuth2 Credentials if Gmail integration is desired
+    ws_send: Optional[Callable[[Dict[str, Any]], Any]] = None
 ) -> Dict[str, Any]:
-    """
-    Generates a referral letter if referral is required.
-    Optionally creates Gmail draft.
-    """
+    """Generates a referral letter if referral is required and saves a .eml file."""
     updates: Dict[str, Any] = {}
 
-    # Check precondition
     if not getattr(state, "referral_required", False):
         reasoning = "Referral not required, skipping draft generation."
         logger.info(f"[REFERRAL_DRAFT_NODE] {reasoning}")
@@ -102,18 +74,28 @@ async def generate_referral_draft_node(
         return updates
 
     # ---------------------------
-    # Prepare prompt for AI
+    # Safe data extraction with fallbacks
+    # ---------------------------
+    patient_name = getattr(state, "patient_info", "<PATIENT>")
+    soap_text = getattr(state, "soap_text", "<SOAP_NOTE>")
+    predicted_codes = getattr(state, "predicted_service_codes", [])
+    diagnoses_str = ", ".join([sc.code for sc in predicted_codes]) if predicted_codes else "<DIAGNOSES>"
+    referral_reason = getattr(state, "referral_rule_applied", "<REFERRAL_REASON>")
+    suggested_specialist = getattr(state, "suggested_specialist", "<SPECIALIST>")
+
+    # ---------------------------
+    # Prepare AI prompt
     # ---------------------------
     prompt = f"""
 You are a medical assistant AI.
 Generate a concise, professional referral letter for a specialist.
 Include:
 
-- Patient info: {getattr(state, 'patient_info', 'N/A')}
-- Relevant history and SOAP note: {state.soap_text}
-- Diagnoses / predicted codes: {', '.join([sc.code for sc in getattr(state, 'predicted_service_codes', [])]) if getattr(state, 'predicted_service_codes', []) else 'None'}
-- Reason for referral: {getattr(state, 'referral_rule_applied', 'General referral')}
-- Suggested specialist or department: {getattr(state, 'suggested_specialist', 'N/A')}
+- Patient info: {patient_name}
+- Relevant history and SOAP note: {soap_text}
+- Diagnoses / predicted codes: {diagnoses_str}
+- Reason for referral: {referral_reason}
+- Suggested specialist or department: {suggested_specialist}
 - Polite closing and signature
 
 Do not make assumptions beyond the provided information.
@@ -142,20 +124,17 @@ Do not make assumptions beyond the provided information.
     updates["referral_draft_text"] = referral_draft
 
     # ---------------------------
-    # Optional: Gmail draft
+    # Save .eml file
     # ---------------------------
-    draft_id = None
-    if gmail_creds:
-        subject = f"Referral for patient {getattr(state, 'patient_info', 'N/A')}"
-        to = getattr(state, "gp_email", "")
-        draft_id = create_gmail_draft(gmail_creds, to, subject, referral_draft)
-        updates["gmail_draft_id"] = draft_id
+    session_id = getattr(state, "session_id", "unknown")
+    eml_path = save_referral_as_eml(referral_draft, session_id)
+    updates["referral_eml_path"] = eml_path
 
     # ---------------------------
     # Reasoning trail & stage
     # ---------------------------
     reasoning_trail = getattr(state, "reasoning_trail", [])
-    reasoning_trail.append(f"Generated referral draft. Gmail draft created: {'Yes' if draft_id else 'No'}")
+    reasoning_trail.append(f"Generated referral draft. .eml saved at {eml_path}")
     updates["reasoning_trail"] = reasoning_trail
 
     stages = getattr(state, "stages", [])
@@ -163,8 +142,8 @@ Do not make assumptions beyond the provided information.
         code="generate_referral_draft",
         description="Referral draft generated",
         data={
-            "referral_draft": referral_draft[:200] + ("..." if len(referral_draft) > 200 else ""),
-            "gmail_draft_id": draft_id
+            "referral_draft_preview": referral_draft[:200] + ("..." if len(referral_draft) > 200 else ""),
+            "referral_eml_path": eml_path
         }
     ))
     updates["stages"] = stages
