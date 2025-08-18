@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 class QueryRequest(BaseModel):
     session_id: str
@@ -33,3 +33,13 @@ class DiagnosisSearchRequest(BaseModel):
 
 class PiiTextInput(BaseModel):
     text: str
+
+class ClaimRejectionRequest(BaseModel):
+    claim_id: str
+    soap: str
+    service_codes: List[str]
+    rejection_reason: str
+
+class ClaimRejectionResponse(BaseModel):
+    analysis: dict
+    suggestions: List[str]

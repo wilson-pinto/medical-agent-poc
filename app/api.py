@@ -7,8 +7,11 @@ from app.utils.json_utils import safe_extract_json
 from app.core.pii_analyzer import analyze_text, anonymize_text
 from fastapi import Query
 
-from app.schemas_new.validate_note_requirements import CheckNoteRequest, CheckNoteResponse
+from app.schemas import ClaimRejectionRequest, ClaimRejectionResponse
+from app.core.claim_learning_engine import learn_from_rejection
+from app.schemas_new.validate_note_requirements import CheckNoteRequest, CheckNoteResponse, PerCodeResult
 from app.core.validate_note_requirements.engine import validate_soap_against_codes
+from app.core.claim_learning_engine import lookup_learned_failure
 
 router = APIRouter()
 
@@ -98,3 +101,45 @@ def check_note(req: CheckNoteRequest):
     # result already matches {"overall":..., "results":[PerCodeResult,...]}
     # Ensure results serialization (Pydantic will handle PerCodeResult)
     return result
+
+@router.post("/ai/claim-rejection/learn", response_model=ClaimRejectionResponse)
+
+def claim_rejection_learn(req: ClaimRejectionRequest):
+
+    return learn_from_rejection(req)
+
+
+
+@router.post("/ai/v3/self-learned-check-note-requirements", response_model=CheckNoteResponse)
+
+def self_learned_check(req: CheckNoteRequest):
+    """
+    Enhanced version of v2: first checks whether a similar SOAP+codes
+    has previously been rejected and learned by the system.
+    If yes → fail immediately and return suggestions learned from past.
+    Else → run normal engine.
+    """
+    learned = lookup_learned_failure(req.soap, req.service_codes)
+    if learned:
+        # Fetch the original validation results from DB or reconstruct minimal results
+        # Here, we build dummy PerCodeResult objects per service code
+        learned_suggestions = learned.get("suggestions", [])
+        results = [
+            PerCodeResult(
+                service_code=code,
+                compliance="fail",
+                missing_terms=[],
+                suggestions=learned_suggestions,
+                gemini_used=False,
+                gemini_reasoning="Overridden by self-learning model.",
+                rule_version=None
+            )
+            for code in req.service_codes
+        ]
+        return CheckNoteResponse(
+            overall="fail",
+            results=results
+        )
+    analysis_dict = validate_soap_against_codes(req.soap, req.service_codes)
+    response_obj = CheckNoteResponse(**analysis_dict)
+    return response_obj
