@@ -43,3 +43,10 @@ class ClaimRejectionRequest(BaseModel):
 class ClaimRejectionResponse(BaseModel):
     analysis: dict
     suggestions: List[str]
+
+class ClaimPredictionResponse(BaseModel):
+    rejection_probability: float
+    risk_level: str
+    suggestions: List[str]
+    reasoning: str
+    estimated_reimbursement: float

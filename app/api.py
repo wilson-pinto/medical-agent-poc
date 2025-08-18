@@ -13,6 +13,13 @@ from app.schemas_new.validate_note_requirements import CheckNoteRequest, CheckNo
 from app.core.validate_note_requirements.engine import validate_soap_against_codes
 from app.core.claim_learning_engine import lookup_learned_failure
 
+from app.core.predict_helpers import (
+    get_similar_failures,
+    calculate_rejection_probability,
+    assign_risk_level,
+    aggregate_suggestions
+)
+
 router = APIRouter()
 
 @router.post("/ai/suggest-service-codes/local-model",
@@ -103,15 +110,10 @@ def check_note(req: CheckNoteRequest):
     return result
 
 @router.post("/ai/claim-rejection/learn", response_model=ClaimRejectionResponse)
-
 def claim_rejection_learn(req: ClaimRejectionRequest):
-
     return learn_from_rejection(req)
 
-
-
 @router.post("/ai/v3/self-learned-check-note-requirements", response_model=CheckNoteResponse)
-
 def self_learned_check(req: CheckNoteRequest):
     """
     Enhanced version of v2: first checks whether a similar SOAP+codes
@@ -143,3 +145,65 @@ def self_learned_check(req: CheckNoteRequest):
     analysis_dict = validate_soap_against_codes(req.soap, req.service_codes)
     response_obj = CheckNoteResponse(**analysis_dict)
     return response_obj
+
+@router.post("/ai/predict-claim-outcome", response_model=ClaimPredictionResponse)
+def predict_claim_outcome(req: CheckNoteRequest):
+    # Step 1: Analyze & anonymize the SOAP note
+    entities = analyze_text(req.soap)
+    anon_soap = anonymize_text(req.soap, entities)
+
+    # Step 2: Find similar past failures using anonymized SOAP
+    similar_failures = get_similar_failures(anon_soap, req.service_codes)
+
+    # Step 3: Calculate rejection probability
+    rejection_prob = calculate_rejection_probability(similar_failures)
+
+    # Step 4: Assign risk level
+    risk_level = assign_risk_level(rejection_prob)
+
+    # Step 5: Aggregate suggestions from similar failures
+    suggestions = aggregate_suggestions(similar_failures)
+
+    # Step 6: Estimate reimbursement
+    base_reimbursement = 1000.0
+    estimated_reimbursement = base_reimbursement * (1.0 - rejection_prob)
+
+    # Step 7: Enhanced reasoning message with debugging info
+    num_similar = len(similar_failures)
+    if num_similar == 0:
+        reasoning = "Low risk: No similar past failures found in learning database."
+    else:
+        scores = [f["score"] for f in similar_failures]
+        avg_score = sum(scores) / len(scores)
+        max_score = max(scores)
+
+        reasoning = (
+            f"{risk_level.title()} risk: Found {num_similar} similar failure(s). "
+            f"Similarity scores: avg={avg_score:.3f}, max={max_score:.3f}. "
+            f"Calculated rejection probability: {rejection_prob:.3f}"
+        )
+
+    return ClaimPredictionResponse(
+        rejection_probability=rejection_prob,
+        risk_level=risk_level,
+        suggestions=suggestions,
+        reasoning=reasoning,
+        estimated_reimbursement=estimated_reimbursement
+    )
+
+# Add a debugging endpoint
+@router.post("/ai/predict-claim-outcome/debug")
+def predict_claim_outcome_debug(req: CheckNoteRequest):
+    """Debug version that shows detailed breakdown"""
+    entities = analyze_text(req.soap)
+    anon_soap = anonymize_text(req.soap, entities)
+
+    # Get detailed breakdown
+    breakdown = get_risk_breakdown(anon_soap, req.service_codes)
+
+    return {
+        "anonymized_soap": anon_soap,
+        "breakdown": breakdown,
+        "faiss_index_size": FAISS_INDEX.ntotal,
+        "service_codes": req.service_codes
+    }
