@@ -2,11 +2,16 @@ import faiss
 import sqlite3
 import numpy as np
 from app.core.sentence_model_registry import get_sentence_model, get_cross_encoder_model
+import os
+import google.generativeai as genai
 
 DB_PATH = "data/codes.db"
 INDEX_PATH = "index/codes_index.faiss"
 EMBED_MODEL = "NbAiLab/nb-sbert-base"
 CROSS_ENCODER = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
+
+USE_GEMINI = os.getenv("USE_GEMINI", "true").lower() == "true"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Load model
 embed_model = get_sentence_model(EMBED_MODEL)
@@ -29,9 +34,39 @@ if index.ntotal != len(all_codes):
     )
 # --------------------
 
-def search_codes(query: str, top_k: int = 5):
+
+if USE_GEMINI and GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    GEMINI_MODEL = genai.GenerativeModel("gemini-1.5-flash")
+else:
+    GEMINI_MODEL = None
+
+GEMINI_PROMPT = """
+You are a clinical documentation assistant.
+
+Your task is to rewrite the following clinical text into a single concise sentence that preserves only medically relevant information for retrieval:
+- Keep only key symptoms, diagnoses, and procedures/interventions.
+- Remove demographics (age, gender), filler words, and redundant phrasing.
+- Do not add interpretations beyond the input.
+- Output should be one clean sentence suitable for embedding.
+
+SOAP Text:
+{soap}
+"""
+
+def _call_gemini(prompt: str, timeout_s: int = 6) -> str:
+    """Call Gemini (safely) and parse JSON. Returns dict or raises."""
+    if GEMINI_MODEL is None:
+        raise RuntimeError("Gemini not available/configured.")
+    resp = GEMINI_MODEL.generate_content(prompt)
+    return resp.text.strip()
+
+def search_codes(query: str):
+    prompt = GEMINI_PROMPT.format(soap=query)
+    soap = _call_gemini(prompt=prompt)
+    print(f"Gemini cleaned soap: {soap}")
     # Step 1: Embed query with bi-encoder and retrieve top_k candidates
-    embedding = np.array(embed_model.encode([query], convert_to_numpy=True), dtype=np.float32)
+    embedding = np.array(embed_model.encode([soap], convert_to_numpy=True), dtype=np.float32)
     D, I = index.search(embedding, k=50)
 
     candidates = []

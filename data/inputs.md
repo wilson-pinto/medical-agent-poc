@@ -30,12 +30,17 @@
 
 # Extract Diagnosis code
 
-Patient admitted with severe diarrhea, vomiting, and dehydration. Recently returned from travel to Southeast Asia. Laboratory tests confirm Vibrio cholerae 01, biovar cholerae. Fluid and electrolyte replacement therapy initiated.
+Larsen admitted with severe diarrhea, vomiting, and dehydration. Recently returned from travel to Southeast Asia. Laboratory tests confirm Vibrio cholerae 01, biovar cholerae. Fluid and electrolyte replacement therapy initiated.
 
 Toddler with watery diarrhea and vomiting for two days. Stool sample confirms enteropathogenic E. coli. Focus on fluid balance and electrolyte correction.
 
-Male with diarrhea and abdominal pain. Parasitological examination suggests protozoal infection, but specific organism not identified.
-
-Female with renal failure and systemic symptoms. Kidney biopsy confirms renal tuberculosis. Treatment adapted to reduced renal function started.
+The patient, a male, presented with diarrhea and abdominal pain. A parasitological examination suggested a protozoal infection, although the specific organism could not be identified. During the same admission, the patient developed acute severe pneumonia with rapid deterioration. Laboratory tests confirmed pneumonic plague. Intensive treatment was initiated immediately, including isolation measures and supportive care.
+[
+    "A202",
+    "A079"
+]
 
 # Suggest Service codes:
+Patient with diabetes comes for routine blood sugar monitoring and medication adjustment, blood sample taken for HbA1c.
+
+Patient calls about medication side effects, 10-minute phone consultation to adjust dosage and provide reassurance.

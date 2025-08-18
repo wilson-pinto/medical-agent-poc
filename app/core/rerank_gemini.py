@@ -13,7 +13,7 @@ else:
     model = None
 
 
-def get_best_code(query: str, candidates: list[dict]) -> list[dict]:
+def get_best_code(query: str, candidates: list[dict], top_k: int = 5) -> list[dict]:
 
     if not model:
         return [{"code": "N/A", "reason": "Gemini API key missing."}]
@@ -75,6 +75,10 @@ Output only the JSON object.
             }
             for d in output_json.get("diagnoses", [])
         ]
+        
+        if(len(results) > top_k):
+            return results[:top_k]
+        
         return results
     except json.JSONDecodeError:
         # fallback if parsing fails

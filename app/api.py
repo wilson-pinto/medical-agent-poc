@@ -35,9 +35,9 @@ def rerank_agent(payload: RerankRequest):
 summary="Suggest HELFO service codes from SOAP notes using Gemini LLM"
 )
 def suggest_service_codes(payload: QueryRequest):
-    candidates = service_search.search_codes(payload.query, payload.top_k)
+    candidates = service_search.search_codes(payload.query)
     if config.USE_GEMINI:
-        decision = rerank_gemini.get_best_code(payload.query, candidates)
+        decision = rerank_gemini.get_best_code(payload.query, candidates, payload.top_k)
     else:
         decision = rerank_openai.rerank_with_openai(payload.query, candidates)
     return {"session_id": payload.session_id, "decision": decision}
