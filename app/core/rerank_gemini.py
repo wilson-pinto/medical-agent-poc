@@ -4,6 +4,7 @@ import json
 import re
 from app.utils.json_utils import safe_extract_json
 from app.core.pii_analyzer import analyze_text, anonymize_text
+from app.core.service_search import get_service_code_descriptions
 
 
 if GEMINI_API_KEY:
@@ -72,9 +73,16 @@ Output only the JSON object.
     try:
         print(f"Text from Gemini: {text}")
         output_json = safe_extract_json(text)
+        codes = [d["code"] for d in output_json.get("diagnoses", [])]
+        descriptions = get_service_code_descriptions(codes)
+
         # Return list of {code, reason} from diagnoses
         results = [
-            {"code": d["code"], "reason": d["reason"]}
+            {
+                "code": d["code"], 
+                "reason": d["reason"],
+                "description": descriptions.get(d["code"], "No description available")
+            }
             for d in output_json.get("diagnoses", [])
         ]
         return results
