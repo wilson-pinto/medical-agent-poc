@@ -2,8 +2,7 @@ import google.generativeai as genai
 from app.config import GEMINI_API_KEY
 import json
 import re
-from app.utils.json_utils import safe_extract_json
-from app.core.pii_analyzer import analyze_text, anonymize_text
+from app.utils.json_utils import safe_extract_json, clean_model_text
 from app.core.service_search import get_service_code_descriptions
 
 
@@ -12,15 +11,6 @@ if GEMINI_API_KEY:
     model = genai.GenerativeModel("gemini-1.5-flash")
 else:
     model = None
-
-def _clean_model_text(text: str) -> str:
-    """
-    Remove markdown/json fences and surrounding whitespace.
-    """
-    if text is None:
-        return ""
-    cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=re.MULTILINE)
-    return cleaned.strip()
 
 
 def get_best_code(query: str, candidates: list[dict]) -> list[dict]:
@@ -67,7 +57,7 @@ Candidate diagnoses:
 Output only the JSON object.
 """
     response = model.generate_content(prompt)
-    text = _clean_model_text(response.text)
+    text = clean_model_text(response.text)
 
     # Parse JSON from model response
     try:

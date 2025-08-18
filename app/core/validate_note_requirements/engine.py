@@ -1,12 +1,12 @@
 # app/core/validate_note_requirements/engine.py
 import os
 import logging
-import json
 import google.generativeai as genai
 from typing import List, Dict, Any
 from app.core.validate_note_requirements.rules_loader import load_rules
 from app.core.validate_note_requirements.prompts import build_gemini_prompt
 from app.schemas_new.validate_note_requirements import PerCodeResult
+from app.utils.json_utils import safe_extract_json, clean_model_text
 
 logger = logging.getLogger(__name__)
 
@@ -33,25 +33,8 @@ def _call_gemini(prompt: str, timeout_s: int = 6) -> Dict[str, Any]:
     if GEMINI_MODEL is None:
         raise RuntimeError("Gemini not available/configured.")
     resp = GEMINI_MODEL.generate_content(prompt)
-    text = resp.text.strip()
-    # try to extract JSON object
-    try:
-        # If the model returns fences, strip them
-        if text.startswith("```"):
-            # remove triple backticks blocks
-            text = text.strip("` \n")
-        return json.loads(text)
-    except Exception:
-        # Try to find first JSON substring
-        import re
-        m = re.search(r'(\{.*\})', text, flags=re.DOTALL)
-        if m:
-            fragment = m.group(1)
-            try:
-                return json.loads(fragment)
-            except Exception:
-                logger.exception("Gemini returned non-JSON response.")
-        raise
+    text = clean_model_text(resp.text)
+    return safe_extract_json(text) 
 
 def validate_soap_against_codes(soap: str, service_codes: List[str]) -> Dict[str, Any]:
     """Main function. Returns structure matching CheckNoteResponse."""
@@ -89,7 +72,8 @@ def validate_soap_against_codes(soap: str, service_codes: List[str]) -> Dict[str
                 prompt = build_gemini_prompt(code_key, rule.get("requirement", ""), soap)
                 resp = _call_gemini(prompt)
                 gemini_used = True
-                gemini_reasoning = json.dumps(resp)
+                gemini_reasoning = resp['explanation']
+                # gemini_reasoning = json.dumps(resp)
 
                 # Expect: {"status": "pass"|"warn"|"fail", ...}
                 status = resp.get("status", "").lower()

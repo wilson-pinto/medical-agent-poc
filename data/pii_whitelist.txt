@@ -8,4 +8,5 @@ CT
 BT
 PULS
 RESP
-Vibrio
+Vibrio cholerae 01, biovar cholerae
+E. coli

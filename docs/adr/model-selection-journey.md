@@ -1,5 +1,4 @@
-# Easy-to-Understand Benchmarking Summary  
-## Improving ICD-10 Norway Diagnosis Code Matching Accuracy
+# Improving ICD-10 Norway Diagnosis Code Matching Accuracy
 
 ---
 

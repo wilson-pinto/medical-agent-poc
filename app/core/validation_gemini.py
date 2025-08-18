@@ -6,7 +6,7 @@ from typing import List
 import google.generativeai as genai
 
 from app.config import GEMINI_API_KEY
-from app.utils.json_utils import safe_extract_json
+from app.utils.json_utils import safe_extract_json, clean_model_text
 from app.core.diagnosis_search import search_diagnosis_with_explanation
 from app.core.pii_analyzer import analyze_text, anonymize_text
 
@@ -15,19 +15,6 @@ genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 logger = logging.getLogger(__name__)
-
-
-# ----------------------------
-# Helpers: model + parsing utils
-# ----------------------------
-def _clean_model_text(text: str) -> str:
-    """
-    Remove markdown/json fences and surrounding whitespace.
-    """
-    if text is None:
-        return ""
-    cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=re.MULTILINE)
-    return cleaned.strip()
 
 
 def _extract_first_json_array(text: str) -> List:
@@ -90,7 +77,7 @@ def group_clinical_concepts_with_gemini(soap_text: str) -> list[str]:
     try:
         response = model.generate_content(prompt)
         logger.debug(f"Gemini grouping response: {response.text}")
-        text = _clean_model_text(response.text)
+        text = clean_model_text(response.text)
         concepts = _extract_first_json_array(text)
         if not concepts:
             logger.warning("Gemini returned empty or invalid JSON for grouping; falling back to whole SOAP.")
@@ -160,7 +147,7 @@ Output only the JSON object.
             logger.debug(f"Prompt for Gemini rerank for concept: {concept}")
             resp = model.generate_content(prompt)
             logger.debug(f"[DEBUG] Gemini raw response for concept '{concept}': {resp.text}")
-            text = _clean_model_text(resp.text)
+            text = clean_model_text(resp.text)
 
             try:
                 filtered = safe_extract_json(text)

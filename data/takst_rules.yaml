@@ -1,49 +1,49 @@
 "1ad":
-  name: "Enkel pasientkontakt ved personlig frammøte"
+  name: "Simple patient contact via in-person visit"
   required_terms:
-    - "råd"
-    - "veiledning"
+    - "advice"
+    - "guidance"
   warn_terms:
-    - "personlig frammøte"
+    - "in-person visit"
   suggestions:
     - "Document that advice/guidance was given and that patient was seen in person."
   version: "HELFO-2025-01"
-  requirement: "Taksten krever personlig møte og at råd/veiledning ble gitt. Gjelder også ved resept eller henvisning."
+  requirement: "The fee requires an in-person meeting and that advice/guidance was given. Also applies when issuing a prescription or referral."
   severity:
     fail: "Missing advice or guidance."
     warn: "Advice/guidance mentioned but missing confirmation of in-person meeting."
 
 "1bd":
-  name: "Enkel pasientkontakt skriftlig/telefon"
+  name: "Simple patient contact via writing/phone"
   required_terms:
-    - "råd"
+    - "advice"
   warn_terms:
-    - "telefon"
+    - "phone"
   suggestions:
     - "Note phone or electronic contact and the advice given."
   version: "HELFO-2025-01"
-  requirement: "Gjelder skriftlig eller telefonisk kontakt der råd/veiledning gis."
+  requirement: "Applies to written or phone contact where advice/guidance is provided."
   severity:
     fail: "Missing advice."
     warn: "Advice documented but missing contact type."
 
 "1bk":
-  name: "Enkel pasientkontakt skriftlig, telefon eller elektronisk kommunikasjon på legevakt (kveld)"
+  name: "Simple patient contact via writing, phone or electronic communication at emergency service (evening)"
   required_terms:
-    - "råd"
-    - "veiledning"
+    - "advice"
+    - "guidance"
   warn_terms:
-    - "skriftlig"
-    - "telefon"
-    - "elektronisk kommunikasjon"
-    - "legevakt"
-    - "kveld"
+    - "written"
+    - "phone"
+    - "electronic communication"
+    - "emergency service"
+    - "evening"
   suggestions:
     - "Document that advice/guidance was given during written, phone, or electronic contact at the emergency service in the evening."
     - "Ensure to mention if contact resulted in a prescription, sick note, referral, or requisition."
   version: "HELFO-2025-01"
   requirement: >
-    Taksten forutsetter at det gis råd/veiledning ved skriftlig, telefonisk eller elektronisk kommunikasjon på legevakt (kveld).
+    This fee presupposes that advice/guidance is given via written, phone, or electronic communication at the emergency service (evening).
   severity:
     fail: "Missing advice or guidance."
     warn: "Advice or guidance mentioned but missing confirmation of contact type or emergency service timing."
@@ -51,21 +51,21 @@
 "2fev":
   name: "Fever assessment and management"
   required_terms:
-    - "feber"
-    - "temperaturmåling"
-    - "råd"
+    - "fever"
+    - "temperature measurement"
+    - "advice"
   optional_terms:
-    - "smertestillende"
-    - "hydrering"
+    - "painkillers"
+    - "hydration"
   warn_terms:
-    - "uspesifikke symptomer"
-    - "manglende temperaturverdi"
+    - "unspecific symptoms"
+    - "missing temperature value"
   suggestions:
     - "Document patient’s temperature measurement and advice given regarding fever management."
     - "Include any medication recommendations such as analgesics or hydration advice."
   version: "HELFO-2025-01"
   requirement: >
-    Taksten gjelder vurdering og behandling av feber, inkludert temperaturmåling og råd om symptomlindring.
+    This fee applies to the assessment and treatment of fever, including temperature measurement and advice on symptom relief.
   severity:
     fail: "Missing documentation of fever or temperature measurement."
     warn: "Documentation vague on symptoms or missing explicit temperature value."
@@ -73,22 +73,22 @@
 "3hrt":
   name: "Heart surgery preoperative consultation"
   required_terms:
-    - "hjerte"
-    - "kirurgi"
-    - "preoperativ vurdering"
-    - "risikovurdering"
+    - "heart"
+    - "surgery"
+    - "preoperative assessment"
+    - "risk evaluation"
   optional_terms:
-    - "EKG"
-    - "blodprøver"
+    - "ECG"
+    - "blood samples"
   warn_terms:
-    - "manglende risikovurdering"
-    - "uspesifikk konsultasjon"
+    - "missing risk evaluation"
+    - "unspecific consultation"
   suggestions:
     - "Document preoperative heart surgery assessment including risk evaluation."
-    - "Include tests performed such as EKG and blood samples."
+    - "Include tests performed such as ECG and blood samples."
   version: "HELFO-2025-01"
   requirement: >
-    Taksten gjelder preoperativ vurdering for hjertekirurgi med risikovurdering.
+    This fee applies to preoperative assessment for heart surgery with risk evaluation.
   severity:
     fail: "Missing key elements of preoperative cardiac assessment."
     warn: "Risk assessment missing or consultation described vaguely."
@@ -96,23 +96,22 @@
 "4chr":
   name: "Chronic disease management visit"
   required_terms:
-    - "kronisk sykdom"
-    - "oppfølging"
-    - "medisinsk vurdering"
-    - "behandlingsplan"
+    - "chronic disease"
+    - "follow-up"
+    - "medical evaluation"
+    - "treatment plan"
   optional_terms:
-    - "livsstilsråd"
-    - "medikamentjustering"
+    - "lifestyle advice"
+    - "medication adjustment"
   warn_terms:
-    - "manglende behandlingsplan"
-    - "generelle kommentarer uten vurdering"
+    - "missing treatment plan"
+    - "general comments without evaluation"
   suggestions:
     - "Document a thorough follow-up including medical evaluation and treatment plan."
     - "Include lifestyle advice or medication adjustments if relevant."
   version: "HELFO-2025-01"
   requirement: >
-    Taksten gjelder oppfølging av pasienter med kroniske sykdommer, med medisinsk vurdering og behandlingsplan.
+    This fee applies to the follow-up of patients with chronic diseases, including medical evaluation and treatment plan.
   severity:
     fail: "Missing documentation of treatment plan or medical evaluation."
     warn: "Treatment plan missing or notes too general."
-
