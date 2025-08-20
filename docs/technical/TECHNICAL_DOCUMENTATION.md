@@ -1,84 +1,104 @@
 # AI Alchemist – Clinical Coding Assistant
-## 📘 Technical Documentation
+
+## 📘 Technical Documentation (Updated)
 
 ---
 
 ## 1. Data Sources & Licensing
 
-| Source                       | Usage                                    | License            |
-|------------------------------|------------------------------------------|--------------------|
-| [Helfo Official Website](https://www.helfo.no/) | Scraped publicly available documentation related to clinical procedures and ICD coding in Norway | Public (open web data) |
-| `icd10_norway.xlsx`          | Official ICD-10 codebook & descriptions   | WHO ICD-10 License |
-| `soap_eval_data.csv`         | Internally created evaluation dataset (40 SOAP clinical notes, 20 EN / 20 NO) | Proprietary / Internal use only |
+| Source                                                   | Usage                                                                | License                    |
+| -------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------- |
+| [Helfo Official Website](https://www.helfo.no/)          | Public documentation on clinical procedures and ICD coding in Norway | Public (open web data)     |
+| `icd10_english.xlsx`                                     | ICD-10 diagnosis codes and descriptions (Norwegian & English)        | WHO ICD-10 License         |
+| `before_gemini_refactor.csv`, `gemini_refactor_soap.csv` | Internal evaluation datasets (EN SOAP notes, before/after Gemini)    | Proprietary / Internal use |
 
 ---
 
-## 2. Model Details
+## 2. Model Pipeline Overview
 
-### 🔨 Retrieval Pipeline
+### 🔁 Input Refactoring
 
-| Component            | Model / Tool                                  | Purpose                             |
-|---------------------|-----------------------------------------------|-------------------------------------|
-| Sentence Encoder     | `NbAiLab/nb-sbert-base` (default)              | Embed cleaned SOAP text → vector space |
-| FAISS Index         | HNSW-based Index                               | Fast vector similarity search over ICD codes |
-| Cross-Encoder        | `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`   | Re-rank top 50 retrieved codes for final ranking |
+| Component | Tool / Model       | Purpose                                                   |
+| --------- | ------------------ | --------------------------------------------------------- |
+| LLM       | `gemini-1.5-flash` | Refactors SOAP text → concise, medically focused sentence |
 
-### 🧠 LLM (Gemini)
+### 🧠 Embedding & Retrieval
 
-| Model       | Provider | Usage                                  |
-|------------|----------|-----------------------------------------|
-| `gemini-1.5-flash` | Google Generative AI | Pre-processing prompt: rewrite SOAP text into concise, medically-relevant embedding-friendly sentence |
+| Component        | Model                   | Function                              |
+| ---------------- | ----------------------- | ------------------------------------- |
+| Sentence Encoder | `NbAiLab/nb-sbert-base` | Embed refactored input → vector space |
+| FAISS Index      | HNSW-based FAISS        | Fast nearest-neighbor search          |
 
-**Hybrid Architecture Overview:**
+### 🎯 Re-Ranking (Cross-Encoder)
 
-1. 🧾 Raw SOAP → cleaned by Gemini.
-2. ➡ Embedded (bi-encoder) → FAISS top-K retrieval.
-3. 🔁 Ranked via Cross-Encoder → final code suggestion.
+| Component     | Model                                        | Function                           |
+| ------------- | -------------------------------------------- | ---------------------------------- |
+| Cross-Encoder | `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` | Re-rank top 50 ICD code candidates |
+
+**Hybrid Pipeline Summary:**
+
+1. 🧾 **Input:** Raw SOAP note
+2. ✨ **Refactor via Gemini** (`gemini-1.5-flash`) → cleaner, embedding-friendly clinical sentence
+3. 🔢 **Embed** with `nb-sbert-base` → vector embedding
+4. 🔍 **Retrieve top-K** ICD-10 candidates via FAISS
+5. 🧮 **Re-rank** using `mmarco-mMiniLMv2` cross-encoder → top-50 ICD codes
+6. 🤖 **Final Selection via Gemini** → LLM is prompted with:
+   * Refactored SOAP note
+   * Top-ranked ICD-10 code list
+     → Gemini selects **the most contextually appropriate ICD-10 code(s)**
 
 ---
 
 ## 3. Evaluation Methodology & Results
 
 ### 🎯 Benchmark Task
-**ICD-10 Code Retrieval from SOAP Clinical Notes (English & Norwegian)**
 
-- Goal: Can the system retrieve the correct ICD-10 code within top 5 suggestions?
-- Dataset: `soap_eval_data.csv` (40 notes: 20 EN, 20 NO)
-- Metrics:
-    - **Recall@5** — fraction of cases where correct code is in top 5
-    - **MRR@5** — Mean Reciprocal Rank within top 5
+**ICD-10 Code Retrieval** from SOAP Notes (in English)
 
-### 🧪 Models Compared
+* Datasets:
 
-| Model                          | Size   | Domain            |
-|---------------------------------|--------|-------------------|
-| NbAiLab/nb-sbert-base           | Medium | Norwegian         |
-| abhinand/MedEmbed-large-v0.1    | Large  | Medical (EN)      |
-| all-MiniLM-L6-v2               | Small  | General-purpose   |
-| vesteinn/ScandiBERT            | Medium | Nordic languages  |
+  * `before_gemini_refactor.csv` (raw)
+  * `gemini_refactor_soap.csv` (post-LLM refactoring)
+* Metrics:
 
-### 📊 Results Summary
-
-| Model                          | ENG R@5 | ENG MRR | NO R@5 | NO MRR | Overall R@5 | Overall MRR |
-|---------------------------------|--------|--------|--------|--------|-------------|-------------|
-| NbAiLab/nb-sbert-base           | 0.65   | 0.588  | 0.85   | 0.80   | 0.75        | 0.694       |
-| abhinand/MedEmbed-large-v0.1    | 0.65   | 0.613  | 0.75   | 0.725  | 0.70        | 0.669       |
-| all-MiniLM-L6-v2               | 0.60   | 0.446  | 0.65   | 0.60   | 0.625       | 0.523       |
-| vesteinn/ScandiBERT            | 0.30   | 0.30   | 0.50   | 0.42   | 0.40        | 0.36        |
-
-**🏆 Winner:** `NbAiLab/nb-sbert-base` — best performance overall and particularly strong on Norwegian inputs.
+  * **Recall\@5** – How often the correct code is in top 5
+  * **MRR\@5** – How highly ranked the correct code is (reciprocal rank)
 
 ---
 
-## 4. Known Limitations
+## 4. Benchmarking Results (English SOAP Notes)
 
-- Current embedding models are **not fine-tuned on Norwegian clinical-specific vocabulary**, leading to occasional mismatches on rare or domain-specific terms.
-- Evaluation was done on a relatively **small internal dataset (n=40)**.
+| Scenario                   | Pipeline                                      | Recall\@5 | MRR\@5    |
+| -------------------------- | --------------------------------------------- | --------- | --------- |
+| **Embed Only (Before)**    | `all-MiniLM-L6-v2`                            | 0.280     | 0.209     |
+|                            | `NbAiLab/nb-sbert-base`                       | 0.230     | 0.110     |
+| **Embed + Cross (Before)** | `all-MiniLM + ms-marco`                       | 0.400     | 0.345     |
+|                            | `nb-sbert-base + ms-marco`                    | 0.370     | 0.287     |
+| **Embed Only (After)**     | `NbAiLab/nb-sbert-base` (Post-Gemini)         | 0.760     | 0.636     |
+|                            | `all-MiniLM-L6-v2` (Post-Gemini)              | 0.380     | 0.299     |
+| **Embed + Cross (After)**  | `NbAiLab + mmarco-mMiniLMv2` (🔥 Recommended) | **0.800** | **0.713** |
+|                            | `all-MiniLM + mmarco-mMiniLMv2`               | 0.470     | 0.430     |
+
+**🏆 Best Overall:**
+**`NbAiLab/nb-sbert-base` + `mmarco-mMiniLMv2-L12-H384-v1`**, with **Gemini-refactored input**, achieved **Recall\@5 = 0.800**, **MRR\@5 = 0.713**.
+
 ---
 
-## 5. Improvement Areas & Future Work
+## 5. Known Limitations
 
-- Fine-tune `nb-sbert-base` (or similar) **on Norwegian clinical notes**.
-- Expand internal evaluation dataset (≥500 notes) for stronger statistical confidence.
+* **Language Limitations:** All benchmarks were performed in **English**; Norwegian input still needs more empirical testing.
+* **Limited Dataset:** Current evaluation was based on **small internal samples** (\~40-80 SOAP notes).
+* **Cross-lingual Generalization:** Models not yet fine-tuned on **Norwegian clinical corpora**.
+* **Input Quality Sensitivity:** Refactored inputs (via LLM) significantly improve performance; raw text yields poor retrieval.
+
+---
+
+## 6. Recommendations & Future Work
+
+* ✅ **Use recommended pipeline**: `nb-sbert-base + mmarco-mMiniLMv2` + Gemini refactor.
+* 🔁 **Expand dataset**: Scale to ≥500 multilingual SOAP notes.
+* 🧠 **Fine-tune embeddings**: Adapt `nb-sbert-base` to **Norwegian medical data**.
+* 🔬 **Evaluate in Norwegian**: Benchmark retrieval accuracy in real-world NO cases.
+* 🔗 **Integrate UMLS / SNOMED CT mappings**: Enhance semantic coverage across diagnosis synonyms.
 
 ---
